@@ -1,0 +1,30 @@
+# Environment and secrets
+.env
+.env.local
+*.env
+secrets/
+
+# Runtime data
+data/
+logs/
+*.log
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Temporary files
+tmp/
+temp/
+*.tmp
