@@ -320,6 +320,12 @@ class HLLPlayerVIPChecker {
                 await this.handleVipPanelCommand(interaction);
                 break;
             case 'contest':
+            case 'createleaderboard':
+                await this.handleCreateLeaderboardCommand(interaction);
+                break;
+            case 'testmessage':
+                await this.handleTestMessageCommand(interaction);
+                break;
                 await this.handleContestCommand(interaction);
                 break;
             default:
@@ -1106,6 +1112,35 @@ class HLLPlayerVIPChecker {
     async handlePanelUnlink(interaction) { /* Original logic preserved */ }
     async handlePanelHelp(interaction) { /* Original logic preserved */ }
     async handleStatsButton(interaction, type) { /* Original logic preserved */ }
+
+
+    async handleCreateLeaderboardCommand(interaction) {
+        if (!PermissionChecker.hasAdminPermissions(interaction.member)) {
+            return await interaction.reply({
+                content: MESSAGES.ERRORS.ADMIN_REQUIRED,
+                ephemeral: true
+            });
+        }
+
+        await interaction.reply({
+            content: "🏆 Leaderboard feature coming soon! This is just a placeholder.",
+            ephemeral: true
+        });
+    }
+
+    async handleTestMessageCommand(interaction) {
+        if (!PermissionChecker.hasAdminPermissions(interaction.member)) {
+            return await interaction.reply({
+                content: MESSAGES.ERRORS.ADMIN_REQUIRED,
+                ephemeral: true
+            });
+        }
+
+        await interaction.reply({
+            content: "📢 Test message feature coming soon! This is just a placeholder.",
+            ephemeral: true
+        });
+    }
 
     async start() {
         try {
