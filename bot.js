@@ -859,6 +859,8 @@ class HLLPlayerVIPChecker {
         } else if (interaction.customId.startsWith('lifetime_stats_')) {
             await this.handleStatsButton(interaction, 'lifetime');
         } else if (interaction.customId.startsWith('recent_activity_')) {
+        } else if (interaction.customId.startsWith('leaderboard_')) {
+            await this.handleLeaderboardButton(interaction);
             await this.handleStatsButton(interaction, 'recent');
         }
     }
@@ -1183,6 +1185,50 @@ class HLLPlayerVIPChecker {
             content: "📢 Test message feature coming soon! This is just a placeholder.",
             ephemeral: true
         });
+    }
+
+
+    async handleLeaderboardButton(interaction) {
+        const [_, period, type] = interaction.customId.split('_');
+        
+        await interaction.deferUpdate();
+        
+        try {
+            const embed = new EmbedBuilder()
+                .setColor(COLORS.SUCCESS)
+                .setTitle(`🏆 ${type.toUpperCase()} Leaderboard - ${period.toUpperCase()}`)
+                .setDescription(`**Top 20 players - ${period} tracking**\n\nLeaderboard data will be populated once players link accounts!`)
+                .addFields([
+                    { name: '📊 Period', value: period, inline: true },
+                    { name: '📈 Tracking', value: type, inline: true },
+                    { name: '🔄 Updates', value: 'Every hour', inline: true }
+                ])
+                .setTimestamp();
+
+            const actionRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`leaderboard_daily_${type}`)
+                        .setLabel('📅 Daily')
+                        .setStyle(period === 'daily' ? ButtonStyle.Success : ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId(`leaderboard_weekly_${type}`)
+                        .setLabel('📆 Weekly')
+                        .setStyle(period === 'weekly' ? ButtonStyle.Success : ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId(`leaderboard_monthly_${type}`)
+                        .setLabel('🗓️ Monthly')
+                        .setStyle(period === 'monthly' ? ButtonStyle.Success : ButtonStyle.Primary)
+                );
+
+            await interaction.editReply({
+                embeds: [embed],
+                components: [actionRow]
+            });
+
+        } catch (error) {
+            console.error('Leaderboard button error:', error);
+        }
     }
 
     async start() {
