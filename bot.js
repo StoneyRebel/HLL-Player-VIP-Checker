@@ -15,7 +15,7 @@ const {
 
 // Import improved modules
 const Logger = require('./utils/logger');
-const { CRCONService } = require('./services/crcon');
+const CRCONService = require('./services/crcon');
 const DatabaseService = require('./services/database');
 const VIPNotificationService = require('./services/vipNotifications');
 const ContestService = require('./services/contest');
