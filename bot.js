@@ -240,7 +240,7 @@ class HLLPlayerVIPChecker {
                 .setDefaultMemberPermissions('0'),
 
             // NEW: Leaderboard commands
-            ,new SlashCommandBuilder()
+            new SlashCommandBuilder()
                 .setName('createleaderboard')
                 .setDescription('Create a live-updating leaderboard (Admin only)')
                 .addChannelOption(option =>
