@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('dotenv').config();
 
 console.log('🔍 Hell Let Loose Discord Bot - Health Check');
 console.log('===========================================');
