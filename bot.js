@@ -237,10 +237,10 @@ class HLLPlayerVIPChecker {
                         .setName('status')
                         .setDescription('Check current contest status')
                 )
-                .setDefaultMemberPermissions('0')
+                .setDefaultMemberPermissions('0'),
 
             // NEW: Leaderboard commands
-            new SlashCommandBuilder()
+            ,new SlashCommandBuilder()
                 .setName('createleaderboard')
                 .setDescription('Create a live-updating leaderboard (Admin only)')
                 .addChannelOption(option =>
