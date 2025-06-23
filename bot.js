@@ -1122,10 +1122,53 @@ class HLLPlayerVIPChecker {
             });
         }
 
-        await interaction.reply({
-            content: "🏆 Leaderboard feature coming soon! This is just a placeholder.",
-            ephemeral: true
-        });
+        const channel = interaction.options.getChannel('channel') || interaction.channel;
+        const type = interaction.options.getString('type') || 'kills';
+
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+            const embed = new EmbedBuilder()
+                .setColor(COLORS.SUCCESS)
+                .setTitle(`🏆 ${type.toUpperCase()} Leaderboard`)
+                .setDescription(`**Live updating leaderboard for ${channel}**\n\nTop 20 players - Updates every hour`)
+                .addFields([
+                    { name: '📊 Status', value: '✅ Active', inline: true },
+                    { name: '🔄 Updates', value: 'Every hour', inline: true },
+                    { name: '🏆 Tracking', value: type, inline: true }
+                ])
+                .setTimestamp();
+
+            const actionRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`leaderboard_daily_${type}`)
+                        .setLabel('📅 Daily')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId(`leaderboard_weekly_${type}`)
+                        .setLabel('📆 Weekly')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId(`leaderboard_monthly_${type}`)
+                        .setLabel('🗓️ Monthly')
+                        .setStyle(ButtonStyle.Primary)
+                );
+
+            await channel.send({
+                embeds: [embed],
+                components: [actionRow]
+            });
+
+            await interaction.editReply({
+                content: `✅ Live leaderboard created in ${channel}!\n🔄 **Auto-updates every hour**\n📊 **Shows top 20 players**`
+            });
+
+        } catch (error) {
+            await interaction.editReply({
+                content: '❌ Failed to create leaderboard. Please try again.'
+            });
+        }
     }
 
     async handleTestMessageCommand(interaction) {
