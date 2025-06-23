@@ -15,7 +15,7 @@ const {
 
 // Import improved modules
 const Logger = require('./utils/logger');
-const CRCONService = require('./services/crcon');
+const { CRCONService } = require('./services/crcon');
 const DatabaseService = require('./services/database');
 const VIPNotificationService = require('./services/vipNotifications');
 const ContestService = require('./services/contest');
@@ -238,6 +238,38 @@ class HLLPlayerVIPChecker {
                         .setDescription('Check current contest status')
                 )
                 .setDefaultMemberPermissions('0')
+
+            // NEW: Leaderboard commands
+            new SlashCommandBuilder()
+                .setName('createleaderboard')
+                .setDescription('Create a live-updating leaderboard (Admin only)')
+                .addChannelOption(option =>
+                    option.setName('channel')
+                        .setDescription('Channel to post leaderboard in')
+                        .setRequired(false)
+                )
+                .addStringOption(option =>
+                    option.setName('type')
+                        .setDescription('Default leaderboard type')
+                        .setRequired(false)
+                        .addChoices(
+                            { name: '💀 Most Kills', value: 'kills' },
+                            { name: '🎯 Highest Score', value: 'score' },
+                            { name: '⏱️ Most Playtime', value: 'playtime' },
+                            { name: '📈 Best K/D Ratio', value: 'kdr' }
+                        )
+                )
+                .setDefaultMemberPermissions('0'),
+
+            new SlashCommandBuilder()
+                .setName('testmessage')
+                .setDescription('Test in-game messaging system (Admin only)')
+                .addStringOption(option =>
+                    option.setName('message')
+                        .setDescription('Test message to send (optional)')
+                        .setRequired(false)
+                )
+                .setDefaultMemberPermissions('0'),
         ];
 
         console.log(`📋 Prepared ${commands.length} commands for registration`);
