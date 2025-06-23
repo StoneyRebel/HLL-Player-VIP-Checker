@@ -19,4 +19,4 @@ class CRCONService {
     }
 }
 
-module.exports = { CRCONService, CRCONError };
+module.exports = CRCONService;
