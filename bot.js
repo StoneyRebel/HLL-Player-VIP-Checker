@@ -1188,6 +1188,7 @@ class HLLPlayerVIPChecker {
     }
 
 
+
     async handleLeaderboardButton(interaction) {
         const [_, period, type] = interaction.customId.split('_');
         
@@ -1197,7 +1198,6 @@ class HLLPlayerVIPChecker {
             const embed = new EmbedBuilder()
                 .setColor(COLORS.SUCCESS)
                 .setTitle(`🏆 ${type.toUpperCase()} Leaderboard - ${period.toUpperCase()}`)
-                .setDescription(`**Top 20 players - ${period} tracking**\n\nLeaderboard data will be populated once players link accounts!`)
                 .addFields([
                     { name: '📊 Period', value: period, inline: true },
                     { name: '📈 Tracking', value: type, inline: true },
@@ -1249,3 +1249,4 @@ bot.start();
 
 module.exports = HLLPlayerVIPChecker;
 // Force deploy Mon Jun 23 01:54:02 AM EDT 2025
+
