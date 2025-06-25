@@ -157,7 +157,7 @@ class CommandHandler {
                     .setDefaultMemberPermissions('0'),
 
                 new SlashCommandBuilder()
-                    .setName('leaderboard')
+                    .setName('createleaderboard')
                     .setDescription('Create a live leaderboard (Admin only)')
                     .addStringOption(option =>
                         option.setName('type')
@@ -203,14 +203,14 @@ class CommandHandler {
                     .setDefaultMemberPermissions('0')
             ];
 
-            const rest = new REST({ version: '9' }).setToken(config.discord.token);
-
             Logger.info(`🔄 Refreshing ${this.commands.length} application (/) commands...`);
             
             // Log each command being registered
             this.commands.forEach(cmd => {
                 Logger.debug(`Registering command: ${cmd.name}`);
             });
+
+            const rest = new REST({ version: '9' }).setToken(config.discord.token);
 
             await rest.put(
                 Routes.applicationCommands(config.discord.clientId),
@@ -254,9 +254,9 @@ class CommandHandler {
                 case 'panel':
                     await this.handlePanelCommand(interaction);
                     break;
-                case 'leaderboard':
-                    Logger.debug('Processing leaderboard command');
-                    await this.handleLeaderboardCommand(interaction);
+                case 'createleaderboard':
+                    Logger.debug('Processing createleaderboard command');
+                    await this.handleCreateLeaderboardCommand(interaction);
                     break;
                 case 'debug':
                     await this.handleDebugCommand(interaction);
@@ -710,7 +710,7 @@ class CommandHandler {
         });
     }
 
-    async handleLeaderboardCommand(interaction) {
+    async handleCreateLeaderboardCommand(interaction) {
         if (!interaction.member.permissions.has('Administrator')) {
             return await interaction.reply({
                 content: MESSAGES.ERRORS.ADMIN_REQUIRED,
