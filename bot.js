@@ -119,7 +119,8 @@ class HLLPlayerVIPChecker {
             client: this.client
         });
         
-        await this.commandHandler.registerCommands();
+        // Link handlers together
+        this.interactionHandler.setCommandHandler(this.commandHandler);
         
         Logger.info('✅ Handlers initialized');
     }
@@ -133,8 +134,17 @@ class HLLPlayerVIPChecker {
             Logger.info(`🔗 Connected to ${this.client.guilds.cache.size} server(s)`);
             Logger.info(`🌐 CRCON URL: ${config.crcon.baseUrl}`);
             
-            // Start background services
-            await this.startBackgroundServices();
+            try {
+                // NOW register commands after the bot is ready
+                await this.commandHandler.registerCommands();
+                
+                // Start background services
+                await this.startBackgroundServices();
+                
+                Logger.info('🎉 Bot is fully ready and operational!');
+            } catch (error) {
+                Logger.error('❌ Error during ready event:', error);
+            }
         });
 
         // Interaction handling
@@ -143,7 +153,7 @@ class HLLPlayerVIPChecker {
                 // Rate limiting check
                 if (!this.rateLimiter.checkUserLimit(interaction.user.id)) {
                     return await interaction.reply({
-                        content: MESSAGES.ERRORS.RATE_LIMITED,
+                        content: '❌ You\'re doing that too fast! Please wait a moment and try again.',
                         ephemeral: true
                     });
                 }
@@ -218,7 +228,7 @@ class HLLPlayerVIPChecker {
 
     async handleInteractionError(interaction, error) {
         const errorMessage = error.message.includes('CRCON') 
-            ? MESSAGES.ERRORS.SERVER_UNAVAILABLE
+            ? '❌ Unable to connect to Hell Let Loose server. Please try again later.'
             : '❌ An error occurred while processing your command.';
         
         try {
