@@ -620,19 +620,32 @@ class CommandHandler {
 
         const subcommand = interaction.options.getSubcommand();
 
-        switch (subcommand) {
-            case 'create':
-                await this.contest.handleCreate(interaction);
-                break;
-            case 'end':
-                await this.contest.handleEnd(interaction);
-                break;
-            case 'winners':
-                await this.contest.handleWinners(interaction);
-                break;
-            case 'status':
-                await this.contest.handleStatus(interaction);
-                break;
+        try {
+            switch (subcommand) {
+                case 'create':
+                    await this.contest.handleCreate(interaction);
+                    break;
+                case 'end':
+                    await this.contest.handleEnd(interaction);
+                    break;
+                case 'winners':
+                    await this.contest.handleWinners(interaction);
+                    break;
+                case 'status':
+                    await this.contest.handleStatus(interaction);
+                    break;
+                default:
+                    await interaction.reply({
+                        content: `❌ Unknown contest subcommand: ${subcommand}`,
+                        ephemeral: true
+                    });
+            }
+        } catch (error) {
+            Logger.error(`Error in contest ${subcommand} command:`, error);
+            await interaction.reply({
+                content: `❌ Failed to execute contest command: ${error.message}`,
+                ephemeral: true
+            });
         }
     }
 
@@ -710,18 +723,24 @@ class CommandHandler {
         await interaction.deferReply();
 
         try {
+            Logger.info(`Creating leaderboard of type: ${type}`);
+            
+            if (!this.leaderboard) {
+                throw new Error('Leaderboard service not available');
+            }
+            
             const message = await this.leaderboard.create(interaction.channel, type);
             
             await interaction.editReply({
-                content: `✅ Live leaderboard created successfully! The leaderboard will update automatically every hour.`,
-                ephemeral: true
+                content: `✅ Live leaderboard created successfully! The leaderboard will update automatically every hour.`
             });
+
+            Logger.info(`Leaderboard created successfully in channel ${interaction.channel.id}`);
 
         } catch (error) {
             Logger.error('Error creating leaderboard:', error);
             await interaction.editReply({
-                content: '❌ Failed to create leaderboard. Please try again later.',
-                ephemeral: true
+                content: `❌ Failed to create leaderboard: ${error.message}`
             });
         }
     }
