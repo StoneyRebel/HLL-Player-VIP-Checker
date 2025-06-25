@@ -1,0 +1,45 @@
+{
+  "name": "hll-player-vip-checker",
+  "version": "2.0.0",
+  "description": "A Discord bot for Hell Let Loose servers to check VIP status, manage player accounts, and run contests",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "nodemon bot.js",
+    "setup": "node scripts/setup.js",
+    "health": "node scripts/health-check.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "hell-let-loose",
+    "hll",
+    "vip",
+    "player-checker",
+    "gaming",
+    "crcon"
+  ],
+  "author": "StoneyRebel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/StoneyRebel/HLL-Player-VIP-Checker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/StoneyRebel/HLL-Player-VIP-Checker/issues"
+  },
+  "homepage": "https://github.com/StoneyRebel/HLL-Player-VIP-Checker#readme",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

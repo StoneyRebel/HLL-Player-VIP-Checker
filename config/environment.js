@@ -1,3 +1,6 @@
+const path = require('path');
+const Logger = require('../utils/logger');
+
 class EnvironmentConfig {
     constructor() {
         this.validateRequired();
@@ -35,8 +38,9 @@ class EnvironmentConfig {
     }
 
     get database() {
+        const dataDir = process.env.DATA_DIR || './data';
         return {
-            filename: process.env.DB_FILENAME || './data/database.sqlite'
+            filename: path.join(dataDir, 'database.json')
         };
     }
 }
