@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const Logger = require('../utils/logger');
 const { Validators, ValidationError } = require('../utils/validators');
 const PermissionChecker = require('../utils/permissions');
@@ -82,6 +82,16 @@ class CommandHandler {
                 .addBooleanOption(option =>
                     option.setName('enabled')
                         .setDescription('Enable or disable VIP notifications')
+                        .setRequired(false)
+                )
+                .setDefaultMemberPermissions('0'),
+
+            new SlashCommandBuilder()
+                .setName('vippanel')
+                .setDescription('Create the VIP panel for players (Admin only)')
+                .addChannelOption(option =>
+                    option.setName('channel')
+                        .setDescription('Channel to post the VIP panel in')
                         .setRequired(false)
                 )
                 .setDefaultMemberPermissions('0'),
@@ -221,6 +231,9 @@ class CommandHandler {
                 case 'vipnotify':
                     await this.handleVipNotifyCommand(interaction);
                     break;
+                case 'vippanel':
+                    await this.handleVipPanelCommand(interaction);
+                    break;
                 case 'contest':
                     await this.handleContestCommand(interaction);
                     break;
@@ -242,6 +255,81 @@ class CommandHandler {
         }
     }
 
+    async handleVipPanelCommand(interaction) {
+        if (!interaction.member.permissions.has('Administrator')) {
+            return await interaction.reply({
+                content: '❌ You need Administrator permissions to use this command.',
+                ephemeral: true
+            });
+        }
+
+        const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
+
+        const embed = new EmbedBuilder()
+            .setColor(0x00D4FF)
+            .setTitle('🎖️ HLL Player VIP Checker')
+            .setDescription('**Link your account and manage your VIP status!**\n\nClick the buttons below to get started. No typing required!')
+            .addFields(
+                { name: '🔗 Link Account', value: 'Connect your Discord to your Hell Let Loose T17 username', inline: true },
+                { name: '🎖️ Check VIP', value: 'View your VIP status and expiration date', inline: true },
+                { name: '📊 View Stats', value: 'See your detailed Hell Let Loose statistics', inline: true }
+            )
+            .setFooter({ text: 'HLL Player VIP Checker by StoneyRebel' })
+            .setTimestamp();
+
+        const actionRow1 = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('panel_link_account')
+                    .setLabel('🔗 Link My Account')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('panel_check_vip')
+                    .setLabel('🎖️ Check My VIP')
+                    .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setCustomId('panel_view_stats')
+                    .setLabel('📊 View My Stats')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+
+        const actionRow2 = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('panel_contest')
+                    .setLabel('🏆 VIP Contest')
+                    .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setCustomId('panel_unlink_account')
+                    .setLabel('🔓 Unlink Account')
+                    .setStyle(ButtonStyle.Danger),
+                new ButtonBuilder()
+                    .setCustomId('panel_help')
+                    .setLabel('❓ Help & Support')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+
+        try {
+            await targetChannel.send({ 
+                embeds: [embed], 
+                components: [actionRow1, actionRow2] 
+            });
+
+            await interaction.reply({
+                content: `✅ VIP panel created in ${targetChannel}!`,
+                ephemeral: true
+            });
+
+        } catch (error) {
+            Logger.error('Error creating VIP panel:', error);
+            await interaction.reply({
+                content: '❌ Failed to create VIP panel.',
+                ephemeral: true
+            });
+        }
+    }
+
+    // ... (keeping all the other handler methods the same)
     async handleLinkCommand(interaction) {
         try {
             const t17Username = interaction.options.getString('username').trim();
