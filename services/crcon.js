@@ -98,121 +98,60 @@ class CRCONService {
         try {
             Logger.debug(`Searching for player: ${t17Username}`);
             
-            // Based on API docs: get_playerids returns dict[str, str] | list[tuple[str, str]]
-            // Try as_dict=false first (list of tuples)
-            try {
-                Logger.debug('Trying get_playerids with as_dict=false');
-                const playerIds = await this.makeRequest('/api/get_playerids');
-                
-                if (Array.isArray(playerIds)) {
-                    const exactMatch = playerIds.find(([name, steamId]) => 
-                        name && name.toLowerCase() === t17Username.toLowerCase()
-                    );
+            const endpoints = [
+                '/api/get_playerids',
+                '/api/get_players',
+                '/api/get_detailed_players'
+            ];
+
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await this.makeRequest(endpoint);
+                    Logger.debug(`Response from ${endpoint}:`, JSON.stringify(response, null, 2));
                     
-                    if (exactMatch) {
-                        Logger.info(`✅ Found player ${t17Username} via get_playerids (array)`);
+                    let playerData = null;
+
+                    if (endpoint === '/api/get_playerids') {
+                        if (Array.isArray(response)) {
+                            const exactMatch = response.find(([name, steamId]) => 
+                                name.toLowerCase() === t17Username.toLowerCase()
+                            );
+                            
+                            if (exactMatch) {
+                                playerData = {
+                                    name: exactMatch[0],
+                                    steam_id_64: exactMatch[1],
+                                    display_name: exactMatch[0]
+                                };
+                            }
+                        }
+                    } else if (endpoint === '/api/get_players') {
+                        if (Array.isArray(response)) {
+                            playerData = response.find(player => 
+                                player.name && player.name.toLowerCase() === t17Username.toLowerCase()
+                            );
+                        }
+                    } else if (endpoint === '/api/get_detailed_players') {
+                        if (response && response.players && Array.isArray(response.players)) {
+                            playerData = response.players.find(player => 
+                                player.name && player.name.toLowerCase() === t17Username.toLowerCase()
+                            );
+                        }
+                    }
+
+                    if (playerData) {
+                        Logger.info(`✅ Found player ${t17Username} via ${endpoint}`);
                         return {
-                            name: exactMatch[0],
-                            steam_id_64: exactMatch[1],
-                            display_name: exactMatch[0]
+                            name: playerData.name,
+                            steam_id_64: playerData.steam_id_64 || playerData.player_id,
+                            display_name: playerData.display_name || playerData.name
                         };
                     }
-                }
-            } catch (error) {
-                Logger.warn('get_playerids (array) failed:', error.message);
-            }
 
-            // Try get_playerids with as_dict=true
-            try {
-                Logger.debug('Trying get_playerids with as_dict=true');
-                const playerIdsDict = await this.makeRequest('/api/get_playerids?as_dict=true');
-                
-                if (playerIdsDict && typeof playerIdsDict === 'object') {
-                    const exactMatch = Object.entries(playerIdsDict).find(([name, steamId]) => 
-                        name && name.toLowerCase() === t17Username.toLowerCase()
-                    );
-                    
-                    if (exactMatch) {
-                        Logger.info(`✅ Found player ${t17Username} via get_playerids (dict)`);
-                        return {
-                            name: exactMatch[0],
-                            steam_id_64: exactMatch[1],
-                            display_name: exactMatch[0]
-                        };
-                    }
+                } catch (endpointError) {
+                    Logger.warn(`Endpoint ${endpoint} failed:`, endpointError.message);
+                    continue;
                 }
-            } catch (error) {
-                Logger.warn('get_playerids (dict) failed:', error.message);
-            }
-
-            // Try get_players - returns list[rcon.types.GetPlayersType]
-            try {
-                Logger.debug('Trying get_players');
-                const players = await this.makeRequest('/api/get_players');
-                
-                if (Array.isArray(players)) {
-                    const exactMatch = players.find(player => 
-                        player.name && player.name.toLowerCase() === t17Username.toLowerCase()
-                    );
-                    
-                    if (exactMatch) {
-                        Logger.info(`✅ Found player ${t17Username} via get_players`);
-                        return {
-                            name: exactMatch.name,
-                            steam_id_64: exactMatch.player_id || exactMatch.steam_id_64,
-                            display_name: exactMatch.name
-                        };
-                    }
-                }
-            } catch (error) {
-                Logger.warn('get_players failed:', error.message);
-            }
-
-            // Try get_detailed_players - returns rcon.types.GetDetailedPlayers
-            try {
-                Logger.debug('Trying get_detailed_players');
-                const detailedResponse = await this.makeRequest('/api/get_detailed_players');
-                
-                let players = null;
-                if (detailedResponse && detailedResponse.players) {
-                    players = detailedResponse.players;
-                } else if (Array.isArray(detailedResponse)) {
-                    players = detailedResponse;
-                }
-                
-                if (players && Array.isArray(players)) {
-                    const exactMatch = players.find(player => 
-                        player.name && player.name.toLowerCase() === t17Username.toLowerCase()
-                    );
-                    
-                    if (exactMatch) {
-                        Logger.info(`✅ Found player ${t17Username} via get_detailed_players`);
-                        return {
-                            name: exactMatch.name,
-                            steam_id_64: exactMatch.player_id || exactMatch.steam_id_64,
-                            display_name: exactMatch.name
-                        };
-                    }
-                }
-            } catch (error) {
-                Logger.warn('get_detailed_players failed:', error.message);
-            }
-
-            // Try get_player_info with exact player name
-            try {
-                Logger.debug('Trying get_player_info');
-                const playerInfo = await this.makeRequest('/api/get_player_info', 'GET', { player_name: t17Username });
-                
-                if (playerInfo && playerInfo.name) {
-                    Logger.info(`✅ Found player ${t17Username} via get_player_info`);
-                    return {
-                        name: playerInfo.name,
-                        steam_id_64: playerInfo.player_id || playerInfo.steam_id_64,
-                        display_name: playerInfo.name
-                    };
-                }
-            } catch (error) {
-                Logger.warn('get_player_info failed:', error.message);
             }
 
             Logger.warn(`❌ Player ${t17Username} not found in any endpoint`);
@@ -232,7 +171,6 @@ class CRCONService {
         try {
             Logger.debug(`Checking VIP status for Steam ID: ${steamId}`);
             
-            // Based on API docs: get_vip_ids returns list[rcon.types.VipIdType]
             const vipIds = await this.makeRequest('/api/get_vip_ids');
             Logger.debug('VIP IDs response:', JSON.stringify(vipIds, null, 2));
 
@@ -300,7 +238,6 @@ class CRCONService {
 
     async testConnection() {
         try {
-            // Based on API docs: get_status returns rcon.types.StatusType
             const status = await this.makeRequest('/api/get_status');
             
             if (status) {
@@ -333,17 +270,18 @@ class CRCONService {
     async sendMessageToAllPlayers(message) {
         Logger.debug(`Attempting to send message: "${message}"`);
         
-        // Based on API docs, try set_broadcast first (most likely to work for all players)
         const messagingMethods = [
             {
                 name: 'set_broadcast',
                 call: () => this.makeRequest('/api/set_broadcast', 'POST', { message: message })
             },
             {
-                name: 'message_player (broadcast)',
+                name: 'message_player (all)',
                 call: () => this.makeRequest('/api/message_player', 'POST', { 
                     message: message, 
-                    by: 'VIP Bot'
+                    by: 'VIP Bot',
+                    player_name: null,
+                    player_id: null
                 })
             }
         ];
