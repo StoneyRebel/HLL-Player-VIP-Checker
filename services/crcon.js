@@ -73,7 +73,9 @@ class CRCONService {
             Logger.debug(`Making CRCON request: ${method} ${endpoint}`);
             const response = await axios(config);
             
+            // Handle different response formats
             if (response.data && typeof response.data === 'object' && 'result' in response.data) {
+                Logger.debug(`API response has 'result' wrapper`);
                 return response.data.result;
             }
             
@@ -96,62 +98,133 @@ class CRCONService {
 
     async getPlayerByT17Username(t17Username) {
         try {
-            Logger.debug(`Searching for player: ${t17Username}`);
+            Logger.info(`🔍 Searching for player: ${t17Username}`);
             
-            const endpoints = [
-                '/api/get_playerids',
-                '/api/get_players',
-                '/api/get_detailed_players'
-            ];
+            // Method 1: Try get_player_info (most direct)
+            try {
+                Logger.debug('Trying get_player_info endpoint...');
+                const playerInfo = await this.makeRequest('/api/get_player_info', 'GET', { 
+                    player_name: t17Username 
+                });
+                
+                if (playerInfo && playerInfo.steam_id_64) {
+                    Logger.info(`✅ Found player ${t17Username} via get_player_info`);
+                    return {
+                        name: playerInfo.name || t17Username,
+                        steam_id_64: playerInfo.steam_id_64,
+                        display_name: playerInfo.display_name || playerInfo.name || t17Username
+                    };
+                }
+            } catch (error) {
+                Logger.debug('get_player_info failed:', error.message);
+            }
 
-            for (const endpoint of endpoints) {
-                try {
-                    const response = await this.makeRequest(endpoint);
-                    Logger.debug(`Response from ${endpoint}:`, JSON.stringify(response, null, 2));
+            // Method 2: Try get_playerids with as_dict=false (returns tuples)
+            try {
+                Logger.debug('Trying get_playerids endpoint...');
+                const playerIds = await this.makeRequest('/api/get_playerids?as_dict=false');
+                Logger.debug(`get_playerids returned ${Array.isArray(playerIds) ? playerIds.length : 'non-array'} entries`);
+                
+                if (playerIds && Array.isArray(playerIds)) {
+                    const exactMatch = playerIds.find(([name, steamId]) => 
+                        name && name.toLowerCase() === t17Username.toLowerCase()
+                    );
                     
-                    let playerData = null;
-
-                    if (endpoint === '/api/get_playerids') {
-                        if (Array.isArray(response)) {
-                            const exactMatch = response.find(([name, steamId]) => 
-                                name.toLowerCase() === t17Username.toLowerCase()
-                            );
-                            
-                            if (exactMatch) {
-                                playerData = {
-                                    name: exactMatch[0],
-                                    steam_id_64: exactMatch[1],
-                                    display_name: exactMatch[0]
-                                };
-                            }
-                        }
-                    } else if (endpoint === '/api/get_players') {
-                        if (Array.isArray(response)) {
-                            playerData = response.find(player => 
-                                player.name && player.name.toLowerCase() === t17Username.toLowerCase()
-                            );
-                        }
-                    } else if (endpoint === '/api/get_detailed_players') {
-                        if (response && response.players && Array.isArray(response.players)) {
-                            playerData = response.players.find(player => 
-                                player.name && player.name.toLowerCase() === t17Username.toLowerCase()
-                            );
-                        }
-                    }
-
-                    if (playerData) {
-                        Logger.info(`✅ Found player ${t17Username} via ${endpoint}`);
+                    if (exactMatch && exactMatch[1]) {
+                        Logger.info(`✅ Found player ${t17Username} via get_playerids`);
                         return {
-                            name: playerData.name,
-                            steam_id_64: playerData.steam_id_64 || playerData.player_id,
-                            display_name: playerData.display_name || playerData.name
+                            name: exactMatch[0],
+                            steam_id_64: exactMatch[1],
+                            display_name: exactMatch[0]
                         };
                     }
-
-                } catch (endpointError) {
-                    Logger.warn(`Endpoint ${endpoint} failed:`, endpointError.message);
-                    continue;
                 }
+            } catch (error) {
+                Logger.debug('get_playerids failed:', error.message);
+            }
+
+            // Method 3: Try get_playerids with as_dict=true (returns object)
+            try {
+                Logger.debug('Trying get_playerids with as_dict=true...');
+                const playerDict = await this.makeRequest('/api/get_playerids?as_dict=true');
+                
+                if (playerDict && typeof playerDict === 'object') {
+                    // Search through the dictionary
+                    for (const [name, steamId] of Object.entries(playerDict)) {
+                        if (name && name.toLowerCase() === t17Username.toLowerCase()) {
+                            Logger.info(`✅ Found player ${t17Username} via get_playerids (dict)`);
+                            return {
+                                name: name,
+                                steam_id_64: steamId,
+                                display_name: name
+                            };
+                        }
+                    }
+                }
+            } catch (error) {
+                Logger.debug('get_playerids (dict) failed:', error.message);
+            }
+
+            // Method 4: Try get_detailed_players
+            try {
+                Logger.debug('Trying get_detailed_players endpoint...');
+                const detailedPlayers = await this.makeRequest('/api/get_detailed_players');
+                
+                if (detailedPlayers) {
+                    let players = detailedPlayers;
+                    
+                    // Handle different response formats
+                    if (detailedPlayers.players && Array.isArray(detailedPlayers.players)) {
+                        players = detailedPlayers.players;
+                    } else if (detailedPlayers.result && Array.isArray(detailedPlayers.result)) {
+                        players = detailedPlayers.result;
+                    } else if (!Array.isArray(detailedPlayers)) {
+                        Logger.debug('Unexpected detailed players format:', typeof detailedPlayers);
+                        players = [];
+                    }
+
+                    if (Array.isArray(players)) {
+                        const playerMatch = players.find(player => 
+                            player && player.name && 
+                            player.name.toLowerCase() === t17Username.toLowerCase()
+                        );
+                        
+                        if (playerMatch && (playerMatch.steam_id_64 || playerMatch.player_id)) {
+                            Logger.info(`✅ Found player ${t17Username} via get_detailed_players`);
+                            return {
+                                name: playerMatch.name,
+                                steam_id_64: playerMatch.steam_id_64 || playerMatch.player_id,
+                                display_name: playerMatch.display_name || playerMatch.name
+                            };
+                        }
+                    }
+                }
+            } catch (error) {
+                Logger.debug('get_detailed_players failed:', error.message);
+            }
+
+            // Method 5: Try get_players (current players only)
+            try {
+                Logger.debug('Trying get_players endpoint...');
+                const currentPlayers = await this.makeRequest('/api/get_players');
+                
+                if (currentPlayers && Array.isArray(currentPlayers)) {
+                    const playerMatch = currentPlayers.find(player => 
+                        player && player.name && 
+                        player.name.toLowerCase() === t17Username.toLowerCase()
+                    );
+                    
+                    if (playerMatch && (playerMatch.steam_id_64 || playerMatch.player_id)) {
+                        Logger.info(`✅ Found player ${t17Username} via get_players (currently online)`);
+                        return {
+                            name: playerMatch.name,
+                            steam_id_64: playerMatch.steam_id_64 || playerMatch.player_id,
+                            display_name: playerMatch.display_name || playerMatch.name
+                        };
+                    }
+                }
+            } catch (error) {
+                Logger.debug('get_players failed:', error.message);
             }
 
             Logger.warn(`❌ Player ${t17Username} not found in any endpoint`);
@@ -169,44 +242,68 @@ class CRCONService {
 
     async getVipStatus(steamId) {
         try {
-            Logger.debug(`Checking VIP status for Steam ID: ${steamId}`);
+            Logger.debug(`🔍 Checking VIP status for Steam ID: ${steamId}`);
             
-            const vipIds = await this.makeRequest('/api/get_vip_ids');
-            Logger.debug('VIP IDs response:', JSON.stringify(vipIds, null, 2));
+            const vipData = await this.makeRequest('/api/get_vip_ids');
+            Logger.debug('Raw VIP data response:', JSON.stringify(vipData, null, 2));
 
-            if (!vipIds) {
+            if (!vipData) {
                 Logger.warn('No VIP data received from CRCON');
                 return { isVip: false };
             }
 
-            if (!Array.isArray(vipIds)) {
-                Logger.warn('VIP data is not an array:', typeof vipIds);
+            let vipList = vipData;
+            
+            // Handle different response formats
+            if (vipData.result && Array.isArray(vipData.result)) {
+                vipList = vipData.result;
+            } else if (!Array.isArray(vipData)) {
+                Logger.warn('VIP data is not an array:', typeof vipData);
+                Logger.debug('VIP data structure:', JSON.stringify(vipData, null, 2));
                 return { isVip: false };
             }
 
-            Logger.debug(`Found ${vipIds.length} VIP entries`);
+            Logger.debug(`Found ${vipList.length} VIP entries to check`);
 
-            const vipEntry = vipIds.find(vip => {
-                const vipPlayerId = vip.player_id || vip.steam_id_64 || vip.steamId;
+            // Log sample VIP entry structure for debugging
+            if (vipList.length > 0) {
+                Logger.debug('Sample VIP entry structure:', JSON.stringify(vipList[0], null, 2));
+            }
+
+            // Try different possible field names for player identification
+            const possiblePlayerFields = ['player_id', 'steam_id_64', 'steamId', 'steam_id', 'id'];
+            
+            const vipEntry = vipList.find(vip => {
+                if (!vip || typeof vip !== 'object') return false;
                 
-                if (vipPlayerId === steamId) {
-                    return true;
+                for (const field of possiblePlayerFields) {
+                    const vipPlayerId = vip[field];
+                    if (vipPlayerId && this.comparePlayerIds(vipPlayerId, steamId)) {
+                        Logger.debug(`Matched VIP entry using field: ${field}`);
+                        return true;
+                    }
                 }
-                
-                if (vipPlayerId && vipPlayerId.toLowerCase && steamId.toLowerCase &&
-                    vipPlayerId.toLowerCase() === steamId.toLowerCase()) {
-                    return true;
-                }
-                
                 return false;
             });
 
             if (vipEntry) {
                 Logger.info(`✅ Found VIP entry for ${steamId}`);
-                Logger.debug('VIP entry:', JSON.stringify(vipEntry, null, 2));
+                Logger.debug('VIP entry details:', JSON.stringify(vipEntry, null, 2));
                 
-                if (vipEntry.expiration) {
-                    const expirationDate = new Date(vipEntry.expiration);
+                // Try different possible field names for expiration
+                const possibleExpirationFields = ['expiration', 'expires_at', 'expire_date', 'expiry'];
+                let expiration = null;
+                
+                for (const field of possibleExpirationFields) {
+                    if (vipEntry[field]) {
+                        expiration = vipEntry[field];
+                        Logger.debug(`Found expiration using field: ${field} = ${expiration}`);
+                        break;
+                    }
+                }
+
+                if (expiration && expiration !== 'None' && expiration !== null) {
+                    const expirationDate = new Date(expiration);
                     const now = new Date();
                     const daysRemaining = Math.ceil((expirationDate - now) / (1000 * 60 * 60 * 24));
 
@@ -214,19 +311,29 @@ class CRCONService {
                         isVip: daysRemaining > 0,
                         expirationDate: expirationDate.toLocaleDateString(),
                         daysRemaining: Math.max(0, daysRemaining),
-                        description: vipEntry.description || 'VIP Player'
+                        description: vipEntry.description || vipEntry.reason || 'VIP Player'
                     };
                 } else {
                     return {
                         isVip: true,
                         expirationDate: 'Never',
                         daysRemaining: null,
-                        description: vipEntry.description || 'Permanent VIP'
+                        description: vipEntry.description || vipEntry.reason || 'Permanent VIP'
                     };
                 }
             } else {
                 Logger.debug(`❌ No VIP entry found for ${steamId}`);
-                Logger.debug('Available VIP player IDs:', vipIds.map(vip => vip.player_id || vip.steam_id_64 || vip.steamId));
+                
+                // Debug: Show available player IDs
+                const availableIds = vipList.map(vip => {
+                    const ids = {};
+                    possiblePlayerFields.forEach(field => {
+                        if (vip[field]) ids[field] = vip[field];
+                    });
+                    return ids;
+                }).slice(0, 5); // Show first 5 for debugging
+                
+                Logger.debug('Sample available VIP player IDs:', JSON.stringify(availableIds, null, 2));
                 return { isVip: false };
             }
 
@@ -234,6 +341,21 @@ class CRCONService {
             Logger.error('Error fetching VIP status:', error.message);
             return { isVip: false, error: error.message };
         }
+    }
+
+    comparePlayerIds(id1, id2) {
+        if (!id1 || !id2) return false;
+        
+        // Direct comparison
+        if (id1 === id2) return true;
+        
+        // Case-insensitive comparison for strings
+        if (typeof id1 === 'string' && typeof id2 === 'string') {
+            return id1.toLowerCase() === id2.toLowerCase();
+        }
+        
+        // Convert to strings and compare
+        return String(id1) === String(id2);
     }
 
     async testConnection() {
@@ -268,20 +390,19 @@ class CRCONService {
     }
 
     async sendMessageToAllPlayers(message) {
-        Logger.debug(`Attempting to send message: "${message}"`);
+        Logger.debug(`🎯 Attempting to send message: "${message}"`);
         
+        // Try different messaging methods based on the API documentation
         const messagingMethods = [
             {
                 name: 'set_broadcast',
                 call: () => this.makeRequest('/api/set_broadcast', 'POST', { message: message })
             },
             {
-                name: 'message_player (all)',
+                name: 'message_player (broadcast)',
                 call: () => this.makeRequest('/api/message_player', 'POST', { 
                     message: message, 
-                    by: 'VIP Bot',
-                    player_name: null,
-                    player_id: null
+                    by: 'VIP Bot'
                 })
             }
         ];
@@ -315,20 +436,91 @@ class CRCONService {
         try {
             Logger.info(`🔍 DEBUG: Checking VIP data for ${steamId}`);
             
-            const vipIds = await this.makeRequest('/api/get_vip_ids');
+            const vipData = await this.makeRequest('/api/get_vip_ids');
+            
+            let vipList = vipData;
+            if (vipData && vipData.result && Array.isArray(vipData.result)) {
+                vipList = vipData.result;
+            }
+            
+            const possiblePlayerFields = ['player_id', 'steam_id_64', 'steamId', 'steam_id', 'id'];
+            
+            let matchingEntry = null;
+            if (Array.isArray(vipList)) {
+                matchingEntry = vipList.find(vip => {
+                    if (!vip || typeof vip !== 'object') return false;
+                    
+                    for (const field of possiblePlayerFields) {
+                        const vipPlayerId = vip[field];
+                        if (vipPlayerId && this.comparePlayerIds(vipPlayerId, steamId)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+            }
             
             return {
                 steamId: steamId,
-                totalVipEntries: vipIds ? vipIds.length : 0,
-                vipData: vipIds,
-                matchingEntry: vipIds ? vipIds.find(vip => 
-                    (vip.player_id && vip.player_id === steamId) ||
-                    (vip.steam_id_64 && vip.steam_id_64 === steamId)
-                ) : null
+                totalVipEntries: Array.isArray(vipList) ? vipList.length : 0,
+                vipData: Array.isArray(vipList) ? vipList.slice(0, 5) : vipList, // Limit to first 5 for debugging
+                matchingEntry: matchingEntry,
+                responseFormat: {
+                    isArray: Array.isArray(vipData),
+                    hasResult: vipData && 'result' in vipData,
+                    type: typeof vipData
+                }
             };
             
         } catch (error) {
             Logger.error('Error in VIP debug:', error);
+            return { error: error.message };
+        }
+    }
+
+    async debugPlayerSearch(t17Username) {
+        try {
+            Logger.info(`🔍 DEBUG: Searching for player ${t17Username} across all endpoints`);
+            
+            const results = {};
+            
+            // Test each endpoint individually
+            const endpoints = [
+                { name: 'get_player_info', path: '/api/get_player_info', params: { player_name: t17Username } },
+                { name: 'get_playerids', path: '/api/get_playerids' },
+                { name: 'get_playerids_dict', path: '/api/get_playerids?as_dict=true' },
+                { name: 'get_players', path: '/api/get_players' },
+                { name: 'get_detailed_players', path: '/api/get_detailed_players' }
+            ];
+
+            for (const endpoint of endpoints) {
+                try {
+                    const data = endpoint.params 
+                        ? await this.makeRequest(endpoint.path, 'GET', endpoint.params)
+                        : await this.makeRequest(endpoint.path);
+                    
+                    results[endpoint.name] = {
+                        success: true,
+                        dataType: typeof data,
+                        isArray: Array.isArray(data),
+                        count: Array.isArray(data) ? data.length : (data && typeof data === 'object' ? Object.keys(data).length : 0),
+                        sample: Array.isArray(data) ? data.slice(0, 2) : data
+                    };
+                } catch (error) {
+                    results[endpoint.name] = {
+                        success: false,
+                        error: error.message
+                    };
+                }
+            }
+            
+            return {
+                searchTerm: t17Username,
+                endpointResults: results
+            };
+            
+        } catch (error) {
+            Logger.error('Error in player search debug:', error);
             return { error: error.message };
         }
     }
