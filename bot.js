@@ -119,9 +119,11 @@ class HLLPlayerVIPChecker {
             client: this.client
         });
         
-        await this.commandHandler.registerCommands();
+        // Set the command handler reference in interaction handler
+        this.interactionHandler.setCommandHandler(this.commandHandler);
         
-        Logger.info('✅ Handlers initialized');
+        // DON'T register commands here - wait until client is ready
+        Logger.info('✅ Handlers initialized (commands will register after login)');
     }
 
     setupEventListeners() {
@@ -132,6 +134,14 @@ class HLLPlayerVIPChecker {
             Logger.info(`✅ Bot logged in as ${this.client.user.tag}!`);
             Logger.info(`🔗 Connected to ${this.client.guilds.cache.size} server(s)`);
             Logger.info(`🌐 CRCON URL: ${config.crcon.baseUrl}`);
+            
+            // NOW register commands after client is ready
+            try {
+                await this.commandHandler.registerCommands();
+                Logger.info('✅ Commands registered successfully');
+            } catch (error) {
+                Logger.error('❌ Failed to register commands:', error);
+            }
             
             // Start background services
             await this.startBackgroundServices();

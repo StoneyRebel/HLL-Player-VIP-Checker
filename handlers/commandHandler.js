@@ -329,7 +329,6 @@ class CommandHandler {
         }
     }
 
-    // ... (keeping all the other handler methods the same)
     async handleLinkCommand(interaction) {
         try {
             const t17Username = interaction.options.getString('username').trim();
@@ -462,12 +461,42 @@ class CommandHandler {
         await interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
+    async handleProfileCommand(interaction) {
+        const targetUser = interaction.options.getUser('user') || interaction.user;
+        const linkedData = await this.database.getPlayerByDiscordId(targetUser.id);
+
+        if (!linkedData) {
+            const message = targetUser.id === interaction.user.id 
+                ? '❌ You haven\'t linked your Hell Let Loose account yet. Use `/link` to get started!'
+                : '❌ That user hasn\'t linked their Hell Let Loose account yet.';
+            
+            return await interaction.reply({ content: message, ephemeral: true });
+        }
+
+        const embed = new EmbedBuilder()
+            .setTitle(`👤 Hell Let Loose Profile`)
+            .setColor(0x00D4FF)
+            .setThumbnail(targetUser.displayAvatarURL())
+            .addFields(
+                { name: '🎮 T17 Username', value: linkedData.t17Username, inline: true },
+                { name: '🎯 Platform', value: linkedData.platform, inline: true },
+                { name: '🔗 Linked Since', value: new Date(linkedData.linkedAt).toLocaleDateString(), inline: true }
+            );
+
+        if (linkedData.displayName && linkedData.displayName !== linkedData.t17Username) {
+            embed.addFields({ name: '📝 Display Name', value: linkedData.displayName, inline: true });
+        }
+
+        embed.setFooter({ text: `Discord: ${targetUser.tag}` });
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
     async handleStatusCommand(interaction) {
         await interaction.deferReply({ ephemeral: true });
 
         try {
             const crconStatus = await this.crcon.testConnection();
-            const messagingTest = await this.crcon.testMessaging();
             const playerCount = await this.database.getPlayerCount();
             
             const embed = new EmbedBuilder()
@@ -495,6 +524,36 @@ class CommandHandler {
                 content: '❌ Failed to check status. Please try again later.'
             });
         }
+    }
+
+    async handleAdminLinkCommand(interaction) {
+        if (!interaction.member.permissions.has('Administrator')) {
+            return await interaction.reply({
+                content: '❌ You need Administrator permissions to use this command.',
+                ephemeral: true
+            });
+        }
+
+        // Implementation for admin link command
+        await interaction.reply({
+            content: '❌ Admin link command not yet implemented.',
+            ephemeral: true
+        });
+    }
+
+    async handleVipNotifyCommand(interaction) {
+        if (!interaction.member.permissions.has('Administrator')) {
+            return await interaction.reply({
+                content: '❌ You need Administrator permissions to use this command.',
+                ephemeral: true
+            });
+        }
+
+        // Implementation for VIP notify command
+        await interaction.reply({
+            content: '❌ VIP notify command not yet implemented.',
+            ephemeral: true
+        });
     }
 
     async handleContestCommand(interaction) {
