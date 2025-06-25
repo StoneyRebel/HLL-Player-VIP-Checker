@@ -124,7 +124,7 @@ class CRCONService {
     async getVipStatus(steamId) {
         try {
             const vipIds = await this.makeRequest('/api/get_vip_ids');
-
+            
             if (vipIds && Array.isArray(vipIds)) {
                 const vipEntry = vipIds.find(vip => vip.player_id === steamId);
                 
