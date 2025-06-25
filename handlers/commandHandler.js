@@ -206,6 +206,11 @@ class CommandHandler {
             const rest = new REST({ version: '9' }).setToken(config.discord.token);
 
             Logger.info(`🔄 Refreshing ${this.commands.length} application (/) commands...`);
+            
+            // Log each command being registered
+            this.commands.forEach(cmd => {
+                Logger.debug(`Registering command: ${cmd.name}`);
+            });
 
             await rest.put(
                 Routes.applicationCommands(config.discord.clientId),
@@ -213,6 +218,7 @@ class CommandHandler {
             );
 
             Logger.info('✅ Successfully reloaded application (/) commands.');
+            Logger.info(`📋 Registered commands: ${this.commands.map(cmd => cmd.name).join(', ')}`);
 
         } catch (error) {
             Logger.error('❌ Failed to register commands:', error);
@@ -224,6 +230,8 @@ class CommandHandler {
         const { commandName } = interaction;
 
         try {
+            Logger.debug(`Handling command: ${commandName}`);
+            
             switch (commandName) {
                 case 'link':
                     await this.handleLinkCommand(interaction);
@@ -247,14 +255,16 @@ class CommandHandler {
                     await this.handlePanelCommand(interaction);
                     break;
                 case 'leaderboard':
+                    Logger.debug('Processing leaderboard command');
                     await this.handleLeaderboardCommand(interaction);
                     break;
                 case 'debug':
                     await this.handleDebugCommand(interaction);
                     break;
                 default:
+                    Logger.warn(`Unknown command received: ${commandName}`);
                     await interaction.reply({
-                        content: MESSAGES.ERRORS.UNKNOWN_COMMAND,
+                        content: `❌ Unknown command: ${commandName}`,
                         ephemeral: true
                     });
             }
