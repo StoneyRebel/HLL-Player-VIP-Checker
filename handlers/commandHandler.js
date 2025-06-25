@@ -184,6 +184,21 @@ class CommandHandler {
                         .setDescription('Test message to send (optional)')
                         .setRequired(false)
                 )
+                .setDefaultMemberPermissions('0'),
+
+            new SlashCommandBuilder()
+                .setName('debugvip')
+                .setDescription('Debug VIP status checking (Admin only)')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('Discord user to debug (optional)')
+                        .setRequired(false)
+                )
+                .addStringOption(option =>
+                    option.setName('steam_id')
+                        .setDescription('Steam ID to debug directly (optional)')
+                        .setRequired(false)
+                )
                 .setDefaultMemberPermissions('0')
         ];
 
@@ -242,6 +257,9 @@ class CommandHandler {
                     break;
                 case 'testmessage':
                     await this.handleTestMessageCommand(interaction);
+                    break;
+                case 'debugvip':
+                    await this.handleDebugVipCommand(interaction);
                     break;
                 default:
                     await interaction.reply({
@@ -329,7 +347,6 @@ class CommandHandler {
         }
     }
 
-    // ... (keeping all the other handler methods the same)
     async handleLinkCommand(interaction) {
         try {
             const t17Username = interaction.options.getString('username').trim();
@@ -580,6 +597,112 @@ class CommandHandler {
             
             await interaction.editReply({
                 content: `❌ Test message failed!\n\n**Error:** ${error.message}\n\n**Suggestions:**\n• Check CRCON connection\n• Verify bot has admin permissions in CRCON`
+            });
+        }
+    }
+
+    async handleDebugVipCommand(interaction) {
+        if (!interaction.member.permissions.has('Administrator')) {
+            return await interaction.reply({
+                content: '❌ You need Administrator permissions to use this command.',
+                ephemeral: true
+            });
+        }
+
+        const targetUser = interaction.options.getUser('user');
+        const steamIdInput = interaction.options.getString('steam_id');
+        
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+            let steamId = steamIdInput;
+            let linkedPlayer = null;
+            
+            // If user provided, get their linked data
+            if (targetUser) {
+                linkedPlayer = await this.database.getPlayerByDiscordId(targetUser.id);
+                if (!linkedPlayer) {
+                    return await interaction.editReply({
+                        content: `❌ User ${targetUser.tag} doesn't have a linked Hell Let Loose account.`
+                    });
+                }
+                steamId = linkedPlayer.steamId;
+            }
+
+            if (!steamId) {
+                return await interaction.editReply({
+                    content: '❌ Please provide either a Discord user or Steam ID to debug.'
+                });
+            }
+
+            // Get debug data from CRCON
+            const debugData = await this.crcon.debugVipData(steamId);
+            const vipStatus = await this.crcon.getVipStatus(steamId);
+
+            const embed = new EmbedBuilder()
+                .setColor(0x9B59B6)
+                .setTitle('🔍 VIP Debug Information')
+                .addFields(
+                    { name: '🆔 Steam ID', value: `\`${steamId}\``, inline: true },
+                    { name: '👤 Target User', value: targetUser ? targetUser.tag : 'Direct Steam ID', inline: true },
+                    { name: '🔗 Linked Player', value: linkedPlayer ? linkedPlayer.t17Username : 'N/A', inline: true }
+                );
+
+            if (debugData.error) {
+                embed.addFields({
+                    name: '❌ Debug Error',
+                    value: `\`\`\`${debugData.error}\`\`\``,
+                    inline: false
+                });
+            } else {
+                embed.addFields(
+                    { name: '📊 Total VIP Entries', value: debugData.totalVipEntries.toString(), inline: true },
+                    { name: '🎯 Match Found', value: debugData.matchingEntry ? '✅ Yes' : '❌ No', inline: true }
+                );
+
+                if (debugData.matchingEntry) {
+                    const vipEntry = debugData.matchingEntry;
+                    embed.addFields({
+                        name: '📋 VIP Entry Details',
+                        value: `\`\`\`json\n${JSON.stringify(vipEntry, null, 2)}\`\`\``,
+                        inline: false
+                    });
+                }
+
+                // Show VIP status check result
+                embed.addFields({
+                    name: '🎖️ VIP Status Result',
+                    value: `**Is VIP:** ${vipStatus.isVip ? '✅ Yes' : '❌ No'}\n` +
+                           `**Expiration:** ${vipStatus.expirationDate || 'N/A'}\n` +
+                           `**Days Remaining:** ${vipStatus.daysRemaining !== null ? vipStatus.daysRemaining : 'N/A'}`,
+                    inline: false
+                });
+
+                // Show sample VIP entries for comparison
+                if (debugData.vipData && debugData.vipData.length > 0) {
+                    const sampleEntries = debugData.vipData.slice(0, 3).map(vip => ({
+                        player_id: vip.player_id || vip.steam_id_64 || 'unknown',
+                        description: vip.description || 'N/A',
+                        expiration: vip.expiration || 'Never'
+                    }));
+
+                    embed.addFields({
+                        name: '📝 Sample VIP Entries (First 3)',
+                        value: `\`\`\`json\n${JSON.stringify(sampleEntries, null, 2)}\`\`\``,
+                        inline: false
+                    });
+                }
+            }
+
+            embed.setFooter({ text: 'This debug info helps troubleshoot VIP detection issues' });
+            embed.setTimestamp();
+
+            await interaction.editReply({ embeds: [embed] });
+
+        } catch (error) {
+            Logger.error('Error in debug VIP command:', error);
+            await interaction.editReply({
+                content: `❌ Debug failed: ${error.message}`
             });
         }
     }
