@@ -723,24 +723,38 @@ class CommandHandler {
         await interaction.deferReply();
 
         try {
-            Logger.info(`Creating leaderboard of type: ${type}`);
+            Logger.info(`Creating ${type} leaderboards (daily/weekly/monthly)`);
             
             if (!this.leaderboard) {
                 throw new Error('Leaderboard service not available');
             }
             
-            const message = await this.leaderboard.create(interaction.channel, type);
+            // Generate 3 embeds: daily, weekly, monthly for the selected type
+            const dailyEmbed = await this.leaderboard.generateLeaderboardEmbed(type, 'daily');
+            const weeklyEmbed = await this.leaderboard.generateLeaderboardEmbed(type, 'weekly');
+            const monthlyEmbed = await this.leaderboard.generateLeaderboardEmbed(type, 'monthly');
             
+            // Create single refresh button
+            const refreshButton = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`leaderboard_refresh_${type}`)
+                        .setLabel('🔄 Refresh All')
+                        .setStyle(ButtonStyle.Secondary)
+                );
+
+            // Send all 3 embeds with the refresh button
             await interaction.editReply({
-                content: `✅ Live leaderboard created successfully! The leaderboard will update automatically every hour.`
+                embeds: [dailyEmbed, weeklyEmbed, monthlyEmbed],
+                components: [refreshButton]
             });
 
-            Logger.info(`Leaderboard created successfully in channel ${interaction.channel.id}`);
+            Logger.info(`${type} leaderboards created successfully in channel ${interaction.channel.id}`);
 
         } catch (error) {
-            Logger.error('Error creating leaderboard:', error);
+            Logger.error('Error creating leaderboards:', error);
             await interaction.editReply({
-                content: `❌ Failed to create leaderboard: ${error.message}`
+                content: `❌ Failed to create leaderboards: ${error.message}`
             });
         }
     }
