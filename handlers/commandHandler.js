@@ -99,6 +99,16 @@ class CommandHandler {
                     .setDefaultMemberPermissions('0'),
 
                 new SlashCommandBuilder()
+                    .setName('adminunlink')
+                    .setDescription('Remove a player\'s account link (Admin only)')
+                    .addUserOption(option =>
+                        option.setName('discord_user')
+                            .setDescription('The Discord user to unlink')
+                            .setRequired(true)
+                    )
+                    .setDefaultMemberPermissions('0'),
+
+                new SlashCommandBuilder()
                     .setName('contest')
                     .setDescription('Manage VIP contests (Admin only)')
                     .addSubcommand(subcommand =>
@@ -162,14 +172,7 @@ class CommandHandler {
                     .setDefaultMemberPermissions('0'),
 
                 new SlashCommandBuilder()
-                    .setName('adminunlink')
-                    .setDescription('Remove a player\'s account link (Admin only)')
-                    .addUserOption(option =>
-                        option.setName('discord_user')
-                            .setDescription('The Discord user to unlink')
-                            .setRequired(true)
-                    )
-                    .setDefaultMemberPermissions('0'),
+                    .setName('createleaderboard')
                     .setDescription('Create a live leaderboard (Admin only)')
                     .addStringOption(option =>
                         option.setName('type')
@@ -215,14 +218,14 @@ class CommandHandler {
                     .setDefaultMemberPermissions('0')
             ];
 
+            const rest = new REST({ version: '9' }).setToken(config.discord.token);
+
             Logger.info(`🔄 Refreshing ${this.commands.length} application (/) commands...`);
             
             // Log each command being registered
             this.commands.forEach(cmd => {
                 Logger.debug(`Registering command: ${cmd.name}`);
             });
-
-            const rest = new REST({ version: '9' }).setToken(config.discord.token);
 
             await rest.put(
                 Routes.applicationCommands(config.discord.clientId),
