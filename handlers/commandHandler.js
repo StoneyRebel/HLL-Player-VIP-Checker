@@ -164,7 +164,7 @@ class CommandHandler {
                     ),
 
                 new SlashCommandBuilder()
-                    .setName('panel')
+                    .setName('vippanel')
                     .setDescription('Create a VIP management panel (Admin only)'),
 
                 new SlashCommandBuilder()
@@ -230,7 +230,7 @@ class CommandHandler {
             } catch (globalError) {
                 Logger.warn('Failed to register global commands, trying simplified approach...');
                 
-                // Fallback: register just basic commands without admin restrictions
+                // Fallback: register all commands without admin permissions to avoid authorization issues
                 const basicCommands = [
                     new SlashCommandBuilder()
                         .setName('link')
@@ -252,6 +252,115 @@ class CommandHandler {
                                 .setRequired(false)
                         ),
                     new SlashCommandBuilder()
+                        .setName('profile')
+                        .setDescription('View your Hell Let Loose profile')
+                        .addUserOption(option =>
+                            option.setName('user')
+                                .setDescription('View another user\'s profile (optional)')
+                                .setRequired(false)
+                        ),
+                    new SlashCommandBuilder()
+                        .setName('adminlink')
+                        .setDescription('Manually link a player account (Admin only)')
+                        .addUserOption(option =>
+                            option.setName('discord_user')
+                                .setDescription('The Discord user to link')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('t17_username')
+                                .setDescription('The player\'s T17 username (leave empty if using steam_id)')
+                                .setRequired(false)
+                        )
+                        .addStringOption(option =>
+                            option.setName('steam_id')
+                                .setDescription('The player\'s Steam ID (console players: da44ad371a9783c49576845d037966f6)')
+                                .setRequired(false)
+                        )
+                        .addStringOption(option =>
+                            option.setName('display_name')
+                                .setDescription('Custom display name (use with steam_id for players not found by username)')
+                                .setRequired(false)
+                        )
+                        .addStringOption(option =>
+                            option.setName('platform')
+                                .setDescription('Player platform (optional - will auto-detect if not specified)')
+                                .setRequired(false)
+                                .addChoices(
+                                    { name: '💻 PC/Steam', value: 'pc' },
+                                    { name: '🎮 PlayStation', value: 'ps' },
+                                    { name: '🎮 Xbox', value: 'xbox' },
+                                    { name: '🎮 Console', value: 'console' }
+                                )
+                        ),
+                    new SlashCommandBuilder()
+                        .setName('adminunlink')
+                        .setDescription('Remove a player\'s account link (Admin only)')
+                        .addUserOption(option =>
+                            option.setName('discord_user')
+                                .setDescription('The Discord user to unlink')
+                                .setRequired(true)
+                        ),
+                    new SlashCommandBuilder()
+                        .setName('contest')
+                        .setDescription('Manage VIP contests')
+                        .addSubcommand(subcommand =>
+                            subcommand
+                                .setName('create')
+                                .setDescription('Create a new VIP contest')
+                                .addStringOption(option =>
+                                    option.setName('title')
+                                        .setDescription('Contest title')
+                                        .setRequired(true)
+                                )
+                                .addStringOption(option =>
+                                    option.setName('description')
+                                        .setDescription('How to participate')
+                                        .setRequired(true)
+                                )
+                                .addIntegerOption(option =>
+                                    option.setName('duration_hours')
+                                        .setDescription('Contest duration in hours')
+                                        .setRequired(true)
+                                        .setMinValue(1)
+                                        .setMaxValue(168)
+                                )
+                                .addStringOption(option =>
+                                    option.setName('prize')
+                                        .setDescription('Contest prize')
+                                        .setRequired(true)
+                                )
+                                .addIntegerOption(option =>
+                                    option.setName('max_winners')
+                                        .setDescription('Maximum number of winners')
+                                        .setMinValue(1)
+                                        .setMaxValue(10)
+                                )
+                        )
+                        .addSubcommand(subcommand =>
+                            subcommand
+                                .setName('end')
+                                .setDescription('End the current contest')
+                        )
+                        .addSubcommand(subcommand =>
+                            subcommand
+                                .setName('winners')
+                                .setDescription('Select contest winners')
+                                .addStringOption(option =>
+                                    option.setName('winner_ids')
+                                        .setDescription('Discord user IDs of winners (comma-separated)')
+                                        .setRequired(true)
+                                )
+                        )
+                        .addSubcommand(subcommand =>
+                            subcommand
+                                .setName('status')
+                                .setDescription('Check current contest status')
+                        ),
+                    new SlashCommandBuilder()
+                        .setName('vippanel')
+                        .setDescription('Create a VIP management panel'),
+                    new SlashCommandBuilder()
                         .setName('createleaderboard')
                         .setDescription('Create a live leaderboard')
                         .addStringOption(option =>
@@ -263,6 +372,34 @@ class CommandHandler {
                                     { name: '🎯 Highest Score', value: 'score' },
                                     { name: '⏱️ Most Playtime', value: 'playtime' },
                                     { name: '📈 Best K/D Ratio', value: 'kdr' }
+                                )
+                        ),
+                    new SlashCommandBuilder()
+                        .setName('debug')
+                        .setDescription('Debug CRCON connection and data')
+                        .addSubcommand(subcommand =>
+                            subcommand
+                                .setName('connection')
+                                .setDescription('Test CRCON connection')
+                        )
+                        .addSubcommand(subcommand =>
+                            subcommand
+                                .setName('vip')
+                                .setDescription('Debug VIP data for a Steam ID')
+                                .addStringOption(option =>
+                                    option.setName('steam_id')
+                                        .setDescription('Steam ID to debug')
+                                        .setRequired(true)
+                                )
+                        )
+                        .addSubcommand(subcommand =>
+                            subcommand
+                                .setName('player')
+                                .setDescription('Debug player search')
+                                .addStringOption(option =>
+                                    option.setName('t17_username')
+                                        .setDescription('T17 username to search for')
+                                        .setRequired(true)
                                 )
                         )
                 ].map(cmd => cmd.toJSON());
@@ -311,8 +448,8 @@ class CommandHandler {
                 case 'contest':
                     await this.handleContestCommand(interaction);
                     break;
-                case 'panel':
-                    await this.handlePanelCommand(interaction);
+                case 'vippanel':
+                    await this.handleVipPanelCommand(interaction);
                     break;
                 case 'createleaderboard':
                     Logger.debug('Processing createleaderboard command');
@@ -792,7 +929,7 @@ class CommandHandler {
         }
     }
 
-    async handlePanelCommand(interaction) {
+    async handleVipPanelCommand(interaction) {
         if (!interaction.member.permissions.has('Administrator')) {
             return await interaction.reply({
                 content: MESSAGES.ERRORS.ADMIN_REQUIRED,
