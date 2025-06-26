@@ -945,7 +945,7 @@ class CommandHandler {
         }
 
         // PC Steam ID (17 digits starting with 76561198)
-        if (/^76561198\d{9}$/.test(steamId)) {
+        if (/^76561198\d{8}$/.test(steamId)) {
             return true;
         }
 

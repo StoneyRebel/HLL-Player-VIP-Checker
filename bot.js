@@ -106,7 +106,9 @@ class HLLPlayerVIPChecker {
             leaderboard: this.leaderboard,
             rateLimiter: this.rateLimiter,
             client: this.client
-        });
+
+
+        // Set the command handler reference AFTER both handlers are created
         
         // Initialize interaction handler
         this.interactionHandler = new InteractionHandler({
@@ -120,7 +122,6 @@ class HLLPlayerVIPChecker {
         });
         
         // Set the command handler reference in interaction handler
-        this.interactionHandler.setCommandHandler(this.commandHandler);
         
         // DON'T register commands here - wait until client is ready
         Logger.info('✅ Handlers initialized (commands will register after login)');

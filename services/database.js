@@ -31,6 +31,11 @@ class DatabaseService {
         try {
             const data = await fs.readFile(this.paths.playerLinks, 'utf8');
             const parsed = JSON.parse(data);
+        
+        // Validate data structure
+        if (typeof parsed !== 'object' || parsed === null) {
+            throw new Error('Invalid data format: expected object');
+        }
             this.playerLinks = new Map(Object.entries(parsed));
         } catch (error) {
             if (error.code !== 'ENOENT') {

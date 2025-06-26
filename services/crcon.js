@@ -48,7 +48,7 @@ class CRCONService {
         // Use API token if available
         if (this.apiToken) {
             this.crconToken = this.apiToken;
-            this.tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+            this.tokenExpiry = null; // API tokens don't expire // 24 hours
             Logger.info('✅ Using CRCON API token authentication');
             return true;
         }
@@ -493,6 +493,10 @@ class CRCONService {
             Logger.error('Error sending message to all players:', error.message);
             throw error;
         }
+    }
+
+    detectPlatform(playerData) {
+        return this.platformDetector.detectPlatform(playerData);
     }
 
     async testMessaging() {
