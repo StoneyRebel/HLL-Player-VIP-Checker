@@ -61,7 +61,7 @@ class CommandHandler {
                             .setRequired(false)
                     ),
 
-                // Admin Commands - removing permissions temporarily to test
+                // Admin Commands (no permissions for now)
                 new SlashCommandBuilder()
                     .setName('adminlink')
                     .setDescription('Manually link a player account (Admin only)')
@@ -212,211 +212,24 @@ class CommandHandler {
                     )
             ];
 
-            // Convert commands to JSON for registration
-            const commandsData = this.commands.map(command => command.toJSON());
-
             const rest = new REST({ version: '10' }).setToken(config.discord.token);
 
-            Logger.info(`🔄 Refreshing ${commandsData.length} application (/) commands...`);
+            Logger.info(`🔄 Registering ${this.commands.length} commands...`);
             
-            // Try registering as global commands first, if that fails, try without permissions
-            try {
-                const data = await rest.put(
-                    Routes.applicationCommands(config.discord.clientId),
-                    { body: commandsData }
-                );
-                Logger.info('✅ Successfully reloaded global application (/) commands.');
-                Logger.info(`📋 Registered commands: ${data.map(cmd => cmd.name).join(', ')}`);
-            } catch (globalError) {
-                Logger.warn('Failed to register global commands, trying simplified approach...');
-                
-                // Fallback: register all commands without admin permissions to avoid authorization issues
-                const basicCommands = [
-                    new SlashCommandBuilder()
-                        .setName('link')
-                        .setDescription('Link your Discord account to your Hell Let Loose T17 account')
-                        .addStringOption(option =>
-                            option.setName('t17_username')
-                                .setDescription('Your exact T17 username from Hell Let Loose')
-                                .setRequired(true)
-                        ),
-                    new SlashCommandBuilder()
-                        .setName('unlink')
-                        .setDescription('Unlink your Discord account from Hell Let Loose'),
-                    new SlashCommandBuilder()
-                        .setName('vip')
-                        .setDescription('Check your VIP status')
-                        .addUserOption(option =>
-                            option.setName('user')
-                                .setDescription('Check another user\'s VIP status (optional)')
-                                .setRequired(false)
-                        ),
-                    new SlashCommandBuilder()
-                        .setName('profile')
-                        .setDescription('View your Hell Let Loose profile')
-                        .addUserOption(option =>
-                            option.setName('user')
-                                .setDescription('View another user\'s profile (optional)')
-                                .setRequired(false)
-                        ),
-                    new SlashCommandBuilder()
-                        .setName('adminlink')
-                        .setDescription('Manually link a player account (Admin only)')
-                        .addUserOption(option =>
-                            option.setName('discord_user')
-                                .setDescription('The Discord user to link')
-                                .setRequired(true)
-                        )
-                        .addStringOption(option =>
-                            option.setName('t17_username')
-                                .setDescription('The player\'s T17 username (leave empty if using steam_id)')
-                                .setRequired(false)
-                        )
-                        .addStringOption(option =>
-                            option.setName('steam_id')
-                                .setDescription('The player\'s Steam ID (console players: da44ad371a9783c49576845d037966f6)')
-                                .setRequired(false)
-                        )
-                        .addStringOption(option =>
-                            option.setName('display_name')
-                                .setDescription('Custom display name (use with steam_id for players not found by username)')
-                                .setRequired(false)
-                        )
-                        .addStringOption(option =>
-                            option.setName('platform')
-                                .setDescription('Player platform (optional - will auto-detect if not specified)')
-                                .setRequired(false)
-                                .addChoices(
-                                    { name: '💻 PC/Steam', value: 'pc' },
-                                    { name: '🎮 PlayStation', value: 'ps' },
-                                    { name: '🎮 Xbox', value: 'xbox' },
-                                    { name: '🎮 Console', value: 'console' }
-                                )
-                        ),
-                    new SlashCommandBuilder()
-                        .setName('adminunlink')
-                        .setDescription('Remove a player\'s account link (Admin only)')
-                        .addUserOption(option =>
-                            option.setName('discord_user')
-                                .setDescription('The Discord user to unlink')
-                                .setRequired(true)
-                        ),
-                    new SlashCommandBuilder()
-                        .setName('contest')
-                        .setDescription('Manage VIP contests')
-                        .addSubcommand(subcommand =>
-                            subcommand
-                                .setName('create')
-                                .setDescription('Create a new VIP contest')
-                                .addStringOption(option =>
-                                    option.setName('title')
-                                        .setDescription('Contest title')
-                                        .setRequired(true)
-                                )
-                                .addStringOption(option =>
-                                    option.setName('description')
-                                        .setDescription('How to participate')
-                                        .setRequired(true)
-                                )
-                                .addIntegerOption(option =>
-                                    option.setName('duration_hours')
-                                        .setDescription('Contest duration in hours')
-                                        .setRequired(true)
-                                        .setMinValue(1)
-                                        .setMaxValue(168)
-                                )
-                                .addStringOption(option =>
-                                    option.setName('prize')
-                                        .setDescription('Contest prize')
-                                        .setRequired(true)
-                                )
-                                .addIntegerOption(option =>
-                                    option.setName('max_winners')
-                                        .setDescription('Maximum number of winners')
-                                        .setMinValue(1)
-                                        .setMaxValue(10)
-                                )
-                        )
-                        .addSubcommand(subcommand =>
-                            subcommand
-                                .setName('end')
-                                .setDescription('End the current contest')
-                        )
-                        .addSubcommand(subcommand =>
-                            subcommand
-                                .setName('winners')
-                                .setDescription('Select contest winners')
-                                .addStringOption(option =>
-                                    option.setName('winner_ids')
-                                        .setDescription('Discord user IDs of winners (comma-separated)')
-                                        .setRequired(true)
-                                )
-                        )
-                        .addSubcommand(subcommand =>
-                            subcommand
-                                .setName('status')
-                                .setDescription('Check current contest status')
-                        ),
-                    new SlashCommandBuilder()
-                        .setName('vippanel')
-                        .setDescription('Create a VIP management panel'),
-                    new SlashCommandBuilder()
-                        .setName('createleaderboard')
-                        .setDescription('Create a live leaderboard')
-                        .addStringOption(option =>
-                            option.setName('type')
-                                .setDescription('Leaderboard type')
-                                .setRequired(true)
-                                .addChoices(
-                                    { name: '💀 Most Kills', value: 'kills' },
-                                    { name: '🎯 Highest Score', value: 'score' },
-                                    { name: '⏱️ Most Playtime', value: 'playtime' },
-                                    { name: '📈 Best K/D Ratio', value: 'kdr' }
-                                )
-                        ),
-                    new SlashCommandBuilder()
-                        .setName('debug')
-                        .setDescription('Debug CRCON connection and data')
-                        .addSubcommand(subcommand =>
-                            subcommand
-                                .setName('connection')
-                                .setDescription('Test CRCON connection')
-                        )
-                        .addSubcommand(subcommand =>
-                            subcommand
-                                .setName('vip')
-                                .setDescription('Debug VIP data for a Steam ID')
-                                .addStringOption(option =>
-                                    option.setName('steam_id')
-                                        .setDescription('Steam ID to debug')
-                                        .setRequired(true)
-                                )
-                        )
-                        .addSubcommand(subcommand =>
-                            subcommand
-                                .setName('player')
-                                .setDescription('Debug player search')
-                                .addStringOption(option =>
-                                    option.setName('t17_username')
-                                        .setDescription('T17 username to search for')
-                                        .setRequired(true)
-                                )
-                        )
-                ].map(cmd => cmd.toJSON());
+            const data = await rest.put(
+                Routes.applicationCommands(config.discord.clientId),
+                { body: this.commands.map(command => command.toJSON()) }
+            );
 
-                const fallbackData = await rest.put(
-                    Routes.applicationCommands(config.discord.clientId),
-                    { body: basicCommands }
-                );
-                
-                Logger.info('✅ Successfully registered basic commands as fallback.');
-                Logger.info(`📋 Registered commands: ${fallbackData.map(cmd => cmd.name).join(', ')}`);
-                Logger.warn('Admin commands disabled due to permission issues. Check bot permissions.');
-            }
+            Logger.info('✅ Successfully registered all commands!');
+            Logger.info(`📋 Commands: ${data.map(cmd => cmd.name).join(', ')}`);
 
         } catch (error) {
             Logger.error('❌ Failed to register commands:', error);
-            throw error;
+            
+            // If this fails, your bot token definitely has permission issues
+            // But let's still try to start the bot without commands
+            Logger.warn('⚠️ Bot will continue without slash commands. Check bot permissions in Discord Developer Portal.');
         }
     }
 
