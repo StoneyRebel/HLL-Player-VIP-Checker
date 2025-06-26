@@ -81,6 +81,11 @@ class CommandHandler {
                             .setRequired(false)
                     )
                     .addStringOption(option =>
+                        option.setName('display_name')
+                            .setDescription('Custom display name (use with steam_id for players not found by username)')
+                            .setRequired(false)
+                    )
+                    .addStringOption(option =>
                         option.setName('platform')
                             .setDescription('Player platform (optional - will auto-detect if not specified)')
                             .setRequired(false)
@@ -449,6 +454,7 @@ class CommandHandler {
         const targetUser = interaction.options.getUser('discord_user');
         const t17Username = interaction.options.getString('t17_username');
         const steamId = interaction.options.getString('steam_id');
+        const customDisplayName = interaction.options.getString('display_name');
         const platformOverride = interaction.options.getString('platform');
 
         // Validate input - need either username or steam ID
@@ -493,20 +499,27 @@ class CommandHandler {
                     });
                 }
 
-                // If username wasn't provided, try to find it
+                // If username wasn't provided, try to find it or use custom display name
                 if (!t17Username) {
-                    try {
-                        const foundPlayer = await this.findPlayerBySteamId(steamId);
-                        if (foundPlayer) {
-                            finalUsername = foundPlayer.name;
-                            Logger.info(`Found username "${finalUsername}" for Steam ID ${steamId}`);
-                        } else {
+                    if (customDisplayName) {
+                        // Use the provided custom display name
+                        finalUsername = customDisplayName.trim();
+                        Logger.info(`Using custom display name "${finalUsername}" for Steam ID ${steamId}`);
+                    } else {
+                        // Try to find username automatically
+                        try {
+                            const foundPlayer = await this.findPlayerBySteamId(steamId);
+                            if (foundPlayer) {
+                                finalUsername = foundPlayer.name;
+                                Logger.info(`Found username "${finalUsername}" for Steam ID ${steamId}`);
+                            } else {
+                                finalUsername = `Player_${steamId.substr(-8)}`;
+                                Logger.info(`No username found for Steam ID ${steamId}, using generated name: ${finalUsername}`);
+                            }
+                        } catch (error) {
+                            Logger.warn('Could not find username for Steam ID:', error.message);
                             finalUsername = `Player_${steamId.substr(-8)}`;
-                            Logger.info(`No username found for Steam ID ${steamId}, using generated name: ${finalUsername}`);
                         }
-                    } catch (error) {
-                        Logger.warn('Could not find username for Steam ID:', error.message);
-                        finalUsername = `Player_${steamId.substr(-8)}`;
                     }
                 }
 
@@ -555,7 +568,7 @@ class CommandHandler {
             await this.database.createPlayerLink({
                 discordId: targetUser.id,
                 t17Username: finalUsername,
-                displayName: playerData.display_name || finalUsername,
+                displayName: customDisplayName || playerData.display_name || finalUsername,
                 steamId: finalSteamId,
                 platform: platformDisplay,
                 lastSeen: playerData.last_seen || null,
@@ -564,6 +577,7 @@ class CommandHandler {
             });
 
             // Create success embed
+            const finalDisplayName = customDisplayName || playerData.display_name || finalUsername;
             const embed = new EmbedBuilder()
                 .setColor(COLORS.SUCCESS)
                 .setTitle('✅ Admin Link Successful!')
@@ -571,6 +585,7 @@ class CommandHandler {
                 .addFields(
                     { name: '👤 Discord User', value: `${targetUser.tag} (${targetUser.id})`, inline: false },
                     { name: '🎮 T17 Username', value: finalUsername, inline: true },
+                    { name: '📝 Display Name', value: finalDisplayName, inline: true },
                     { name: '🆔 Steam ID', value: `\`${finalSteamId}\``, inline: true },
                     { name: '🎯 Platform', value: platformDisplay, inline: true },
                     { name: '👨‍💼 Linked By', value: interaction.user.tag, inline: true },
@@ -591,6 +606,7 @@ class CommandHandler {
                     .setDescription('Your Discord account has been linked to your Hell Let Loose account by a server administrator.')
                     .addFields(
                         { name: '🎮 T17 Username', value: finalUsername, inline: true },
+                        { name: '📝 Display Name', value: finalDisplayName, inline: true },
                         { name: '🎯 Platform', value: platformDisplay, inline: true },
                         { name: '📅 Linked At', value: new Date().toLocaleString(), inline: true }
                     )
