@@ -65,7 +65,6 @@ class HLLPlayerVIPChecker {
     }
 
     async initializeServices() {
-    {
         Logger.info('🔧 Initializing services...');
         
         // Initialize database
@@ -96,8 +95,6 @@ class HLLPlayerVIPChecker {
     }
 
     async initializeHandlers() {
-    {
-    }
         Logger.info('🎮 Initializing command handlers...');
         
         // Initialize command handler with all services
@@ -110,17 +107,8 @@ class HLLPlayerVIPChecker {
             rateLimiter: this.rateLimiter,
             client: this.client
         });
-
-
-    }
-
-    async initializeHandlers() {
-        Logger.info('🎮 Initializing command handlers...');
-
-        // Set the command handler reference AFTER both handlers are created
         
         // Initialize interaction handler
-        
         this.interactionHandler = new InteractionHandler({
             database: this.database,
             crcon: this.crcon,
@@ -130,9 +118,9 @@ class HLLPlayerVIPChecker {
             rateLimiter: this.rateLimiter,
             client: this.client
         });
-        });
         
         // Set the command handler reference in interaction handler
+        this.interactionHandler.setCommandHandler(this.commandHandler);
         
         // DON'T register commands here - wait until client is ready
         Logger.info('✅ Handlers initialized (commands will register after login)');
