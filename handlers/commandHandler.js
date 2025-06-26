@@ -162,7 +162,14 @@ class CommandHandler {
                     .setDefaultMemberPermissions('0'),
 
                 new SlashCommandBuilder()
-                    .setName('createleaderboard')
+                    .setName('adminunlink')
+                    .setDescription('Remove a player\'s account link (Admin only)')
+                    .addUserOption(option =>
+                        option.setName('discord_user')
+                            .setDescription('The Discord user to unlink')
+                            .setRequired(true)
+                    )
+                    .setDefaultMemberPermissions('0'),
                     .setDescription('Create a live leaderboard (Admin only)')
                     .addStringOption(option =>
                         option.setName('type')
@@ -252,6 +259,9 @@ class CommandHandler {
                     break;
                 case 'adminlink':
                     await this.handleAdminLinkCommand(interaction);
+                    break;
+                case 'adminunlink':
+                    await this.handleAdminUnlinkCommand(interaction);
                     break;
                 case 'contest':
                     await this.handleContestCommand(interaction);
@@ -622,6 +632,78 @@ class CommandHandler {
             Logger.error('Error in admin link command:', error);
             await interaction.editReply({
                 content: `❌ Failed to link account: ${error.message}\n\nThe server might be temporarily unavailable.`
+            });
+        }
+    }
+
+    async handleAdminUnlinkCommand(interaction) {
+        // Check admin permissions
+        if (!interaction.member.permissions.has('Administrator')) {
+            return await interaction.reply({
+                content: MESSAGES.ERRORS.ADMIN_REQUIRED,
+                ephemeral: true
+            });
+        }
+
+        const targetUser = interaction.options.getUser('discord_user');
+
+        // Check if user has a linked account
+        const linkedData = await this.database.getPlayerByDiscordId(targetUser.id);
+        if (!linkedData) {
+            return await interaction.reply({
+                content: `❌ ${targetUser.tag} doesn't have any linked Hell Let Loose account.`,
+                ephemeral: true
+            });
+        }
+
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+            // Remove the player link
+            await this.database.deletePlayerLink(targetUser.id);
+
+            // Create success embed
+            const embed = new EmbedBuilder()
+                .setColor(COLORS.WARNING)
+                .setTitle('🔓 Admin Unlink Successful!')
+                .setThumbnail(targetUser.displayAvatarURL())
+                .addFields(
+                    { name: '👤 Discord User', value: `${targetUser.tag} (${targetUser.id})`, inline: false },
+                    { name: '🎮 T17 Username', value: linkedData.t17Username, inline: true },
+                    { name: '🆔 Steam ID', value: `\`${linkedData.steamId}\``, inline: true },
+                    { name: '🎯 Platform', value: linkedData.platform, inline: true },
+                    { name: '👨‍💼 Unlinked By', value: interaction.user.tag, inline: true },
+                    { name: '📅 Unlinked At', value: new Date().toLocaleString(), inline: true }
+                )
+                .setFooter({ text: 'Player can re-link their account anytime using /link' });
+
+            await interaction.editReply({ embeds: [embed] });
+
+            // Log the admin action
+            Logger.info(`Admin unlink by ${interaction.user.tag}: ${targetUser.tag} -> ${linkedData.t17Username} (${linkedData.steamId}) unlinked`);
+
+            // Try to notify the unlinked user via DM
+            try {
+                const dmEmbed = new EmbedBuilder()
+                    .setColor(COLORS.WARNING)
+                    .setTitle('🔓 Account Unlinked by Administrator')
+                    .setDescription('Your Discord account has been unlinked from your Hell Let Loose account by a server administrator.')
+                    .addFields(
+                        { name: '🎮 T17 Username', value: linkedData.t17Username, inline: true },
+                        { name: '📅 Unlinked At', value: new Date().toLocaleString(), inline: true }
+                    )
+                    .setFooter({ text: 'You can re-link your account anytime using /link command' });
+
+                await targetUser.send({ embeds: [dmEmbed] });
+                Logger.info(`DM notification sent to ${targetUser.tag} about unlink`);
+            } catch (dmError) {
+                Logger.warn(`Failed to send DM to ${targetUser.tag}:`, dmError.message);
+            }
+
+        } catch (error) {
+            Logger.error('Error in admin unlink command:', error);
+            await interaction.editReply({
+                content: `❌ Failed to unlink account: ${error.message}`
             });
         }
     }
