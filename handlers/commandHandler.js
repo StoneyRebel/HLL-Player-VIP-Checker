@@ -96,7 +96,7 @@ class CommandHandler {
                                 { name: '🎮 Console', value: 'console' }
                             )
                     )
-                    .setDefaultMemberPermissions('0'),
+                    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
                 new SlashCommandBuilder()
                     .setName('adminunlink')
@@ -106,7 +106,7 @@ class CommandHandler {
                             .setDescription('The Discord user to unlink')
                             .setRequired(true)
                     )
-                    .setDefaultMemberPermissions('0'),
+                    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
                 new SlashCommandBuilder()
                     .setName('contest')
@@ -164,12 +164,12 @@ class CommandHandler {
                             .setName('status')
                             .setDescription('Check current contest status')
                     )
-                    .setDefaultMemberPermissions('0'),
+                    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
                 new SlashCommandBuilder()
                     .setName('panel')
                     .setDescription('Create a VIP management panel (Admin only)')
-                    .setDefaultMemberPermissions('0'),
+                    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
                 new SlashCommandBuilder()
                     .setName('createleaderboard')
@@ -185,7 +185,7 @@ class CommandHandler {
                                 { name: '📈 Best K/D Ratio', value: 'kdr' }
                             )
                     )
-                    .setDefaultMemberPermissions('0'),
+                    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
                 new SlashCommandBuilder()
                     .setName('debug')
@@ -215,25 +215,23 @@ class CommandHandler {
                                     .setRequired(true)
                             )
                     )
-                    .setDefaultMemberPermissions('0')
+                    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
             ];
 
-            const rest = new REST({ version: '9' }).setToken(config.discord.token);
+            // Convert commands to JSON for registration
+            const commandsData = this.commands.map(command => command.toJSON());
 
-            Logger.info(`🔄 Refreshing ${this.commands.length} application (/) commands...`);
+            const rest = new REST({ version: '10' }).setToken(config.discord.token);
+
+            Logger.info(`🔄 Refreshing ${commandsData.length} application (/) commands...`);
             
-            // Log each command being registered
-            this.commands.forEach(cmd => {
-                Logger.debug(`Registering command: ${cmd.name}`);
-            });
-
-            await rest.put(
+            const data = await rest.put(
                 Routes.applicationCommands(config.discord.clientId),
-                { body: this.commands }
+                { body: commandsData }
             );
 
             Logger.info('✅ Successfully reloaded application (/) commands.');
-            Logger.info(`📋 Registered commands: ${this.commands.map(cmd => cmd.name).join(', ')}`);
+            Logger.info(`📋 Registered commands: ${data.map(cmd => cmd.name).join(', ')}`);
 
         } catch (error) {
             Logger.error('❌ Failed to register commands:', error);
