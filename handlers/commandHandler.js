@@ -61,7 +61,7 @@ class CommandHandler {
                             .setRequired(false)
                     ),
 
-                // Admin Commands
+                // Admin Commands - removing permissions temporarily to test
                 new SlashCommandBuilder()
                     .setName('adminlink')
                     .setDescription('Manually link a player account (Admin only)')
@@ -95,8 +95,7 @@ class CommandHandler {
                                 { name: '🎮 Xbox', value: 'xbox' },
                                 { name: '🎮 Console', value: 'console' }
                             )
-                    )
-                    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+                    ),
 
                 new SlashCommandBuilder()
                     .setName('adminunlink')
@@ -105,8 +104,7 @@ class CommandHandler {
                         option.setName('discord_user')
                             .setDescription('The Discord user to unlink')
                             .setRequired(true)
-                    )
-                    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+                    ),
 
                 new SlashCommandBuilder()
                     .setName('contest')
@@ -163,13 +161,11 @@ class CommandHandler {
                         subcommand
                             .setName('status')
                             .setDescription('Check current contest status')
-                    )
-                    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+                    ),
 
                 new SlashCommandBuilder()
                     .setName('panel')
-                    .setDescription('Create a VIP management panel (Admin only)')
-                    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+                    .setDescription('Create a VIP management panel (Admin only)'),
 
                 new SlashCommandBuilder()
                     .setName('createleaderboard')
@@ -184,8 +180,7 @@ class CommandHandler {
                                 { name: '⏱️ Most Playtime', value: 'playtime' },
                                 { name: '📈 Best K/D Ratio', value: 'kdr' }
                             )
-                    )
-                    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+                    ),
 
                 new SlashCommandBuilder()
                     .setName('debug')
@@ -215,7 +210,6 @@ class CommandHandler {
                                     .setRequired(true)
                             )
                     )
-                    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
             ];
 
             // Convert commands to JSON for registration
@@ -225,13 +219,63 @@ class CommandHandler {
 
             Logger.info(`🔄 Refreshing ${commandsData.length} application (/) commands...`);
             
-            const data = await rest.put(
-                Routes.applicationCommands(config.discord.clientId),
-                { body: commandsData }
-            );
+            // Try registering as global commands first, if that fails, try without permissions
+            try {
+                const data = await rest.put(
+                    Routes.applicationCommands(config.discord.clientId),
+                    { body: commandsData }
+                );
+                Logger.info('✅ Successfully reloaded global application (/) commands.');
+                Logger.info(`📋 Registered commands: ${data.map(cmd => cmd.name).join(', ')}`);
+            } catch (globalError) {
+                Logger.warn('Failed to register global commands, trying simplified approach...');
+                
+                // Fallback: register just basic commands without admin restrictions
+                const basicCommands = [
+                    new SlashCommandBuilder()
+                        .setName('link')
+                        .setDescription('Link your Discord account to your Hell Let Loose T17 account')
+                        .addStringOption(option =>
+                            option.setName('t17_username')
+                                .setDescription('Your exact T17 username from Hell Let Loose')
+                                .setRequired(true)
+                        ),
+                    new SlashCommandBuilder()
+                        .setName('unlink')
+                        .setDescription('Unlink your Discord account from Hell Let Loose'),
+                    new SlashCommandBuilder()
+                        .setName('vip')
+                        .setDescription('Check your VIP status')
+                        .addUserOption(option =>
+                            option.setName('user')
+                                .setDescription('Check another user\'s VIP status (optional)')
+                                .setRequired(false)
+                        ),
+                    new SlashCommandBuilder()
+                        .setName('createleaderboard')
+                        .setDescription('Create a live leaderboard')
+                        .addStringOption(option =>
+                            option.setName('type')
+                                .setDescription('Leaderboard type')
+                                .setRequired(true)
+                                .addChoices(
+                                    { name: '💀 Most Kills', value: 'kills' },
+                                    { name: '🎯 Highest Score', value: 'score' },
+                                    { name: '⏱️ Most Playtime', value: 'playtime' },
+                                    { name: '📈 Best K/D Ratio', value: 'kdr' }
+                                )
+                        )
+                ].map(cmd => cmd.toJSON());
 
-            Logger.info('✅ Successfully reloaded application (/) commands.');
-            Logger.info(`📋 Registered commands: ${data.map(cmd => cmd.name).join(', ')}`);
+                const fallbackData = await rest.put(
+                    Routes.applicationCommands(config.discord.clientId),
+                    { body: basicCommands }
+                );
+                
+                Logger.info('✅ Successfully registered basic commands as fallback.');
+                Logger.info(`📋 Registered commands: ${fallbackData.map(cmd => cmd.name).join(', ')}`);
+                Logger.warn('Admin commands disabled due to permission issues. Check bot permissions.');
+            }
 
         } catch (error) {
             Logger.error('❌ Failed to register commands:', error);
