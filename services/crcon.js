@@ -389,3 +389,76 @@ class CRCONService {
 }
 
 module.exports = CRCONService;
+
+    async debugPlayerSearch(t17Username) {
+        try {
+            Logger.info(`🔍 DEBUG: Comprehensive search for ${t17Username} across all endpoints`);
+            
+            const results = {};
+            const endpoints = [
+                { name: 'get_playerids', path: '/api/get_playerids' },
+                { name: 'get_players', path: '/api/get_players' },
+                { name: 'get_vip_ids', path: '/api/get_vip_ids' },
+                { name: 'get_detailed_players', path: '/api/get_detailed_players' },
+                { name: 'get_admin_ids', path: '/api/get_admin_ids' },
+                { name: 'get_player_info', path: `/api/get_player_info?player_name=${encodeURIComponent(t17Username)}` },
+                { name: 'get_detailed_player_info', path: `/api/get_detailed_player_info?player_name=${encodeURIComponent(t17Username)}` },
+                { name: 'get_players_history', path: '/api/get_players_history', method: 'POST', data: { player_name: t17Username, exact_name_match: true, page_size: 10 } }
+            ];
+
+            for (const endpoint of endpoints) {
+                try {
+                    const data = await this.makeRequest(endpoint.path, endpoint.method || 'GET', endpoint.data || null);
+                    
+                    results[endpoint.name] = {
+                        success: true,
+                        dataType: typeof data,
+                        isArray: Array.isArray(data),
+                        count: Array.isArray(data) ? data.length : (data && typeof data === 'object' ? Object.keys(data).length : 0),
+                        foundPlayer: this.testParseForUsername(data, t17Username, endpoint.name)
+                    };
+                } catch (error) {
+                    results[endpoint.name] = {
+                        success: false,
+                        error: error.message
+                    };
+                }
+            }
+            
+            return {
+                searchTerm: t17Username,
+                endpointResults: results
+            };
+            
+        } catch (error) {
+            Logger.error('Error in comprehensive player search debug:', error);
+            return { error: error.message };
+        }
+    }
+
+    testParseForUsername(data, username, endpointName) {
+        try {
+            switch (endpointName) {
+                case 'get_players':
+                    return this.parseCurrentPlayers(data, username);
+                case 'get_detailed_players':
+                    return this.parseDetailedPlayers(data, username);
+                case 'get_playerids':
+                    return this.parsePlayerIds(data, username);
+                case 'get_vip_ids':
+                    return this.parseVipIds(data, username);
+                case 'get_admin_ids':
+                    return this.parseAdminIds(data, username);
+                case 'get_players_history':
+                    return this.parsePlayersHistory(data, username);
+                case 'get_player_info':
+                    return this.parsePlayerInfo(data, username);
+                case 'get_detailed_player_info':
+                    return this.parseDetailedPlayerInfo(data, username);
+                default:
+                    return null;
+            }
+        } catch (error) {
+            return { error: error.message };
+        }
+    }
