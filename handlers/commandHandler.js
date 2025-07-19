@@ -29,7 +29,6 @@ class CommandHandler {
             Logger.info('🔧 Registering slash commands...');
             
             this.commands = [
-                // User Commands
                 new SlashCommandBuilder()
                     .setName('link')
                     .setDescription('Link your Discord account to your Hell Let Loose T17 account')
@@ -53,150 +52,267 @@ class CommandHandler {
                     ),
 
                 new SlashCommandBuilder()
-                    .setName('profile')
-                    .setDescription('View your Hell Let Loose profile')
-                    .addUserOption(option =>
-                        option.setName('user')
-                            .setDescription('View another user\'s profile (optional)')
-                            .setRequired(false)
-                    ),
-
-                // Admin Commands (no permissions for now)
-                new SlashCommandBuilder()
-                    .setName('adminlink')
-                    .setDescription('Manually link a player account (Admin only)')
-                    .addUserOption(option =>
-                        option.setName('discord_user')
-                            .setDescription('The Discord user to link')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('t17_username')
-                            .setDescription('The player\'s T17 username (leave empty if using steam_id)')
-                            .setRequired(false)
-                    )
-                    .addStringOption(option =>
-                        option.setName('steam_id')
-                            .setDescription('The player\'s Steam ID (console players: da44ad371a9783c49576845d037966f6)')
-                            .setRequired(false)
-                    )
-                    .addStringOption(option =>
-                        option.setName('display_name')
-                            .setDescription('Custom display name (use with steam_id for players not found by username)')
-                            .setRequired(false)
-                    )
-                    .addStringOption(option =>
-                        option.setName('platform')
-                            .setDescription('Player platform (optional - will auto-detect if not specified)')
-                            .setRequired(false)
-                            .addChoices(
-                                { name: '💻 PC/Steam', value: 'pc' },
-                                { name: '🎮 PlayStation', value: 'ps' },
-                                { name: '🎮 Xbox', value: 'xbox' },
-                                { name: '🎮 Console', value: 'console' }
-                            )
-                    ),
-
-                new SlashCommandBuilder()
-                    .setName('adminunlink')
-                    .setDescription('Remove a player\'s account link (Admin only)')
-                    .addUserOption(option =>
-                        option.setName('discord_user')
-                            .setDescription('The Discord user to unlink')
-                            .setRequired(true)
-                    ),
-
-                new SlashCommandBuilder()
-                    .setName('contest')
-                    .setDescription('Manage VIP contests (Admin only)')
+                    .setName('debug')
+                    .setDescription('Debug CRCON connection and data (Admin only)')
                     .addSubcommand(subcommand =>
                         subcommand
-                            .setName('create')
-                            .setDescription('Create a new VIP contest')
-                            .addStringOption(option =>
-                                option.setName('title')
-                                    .setDescription('Contest title')
-                                    .setRequired(true)
-                            )
-                            .addStringOption(option =>
-                                option.setName('description')
-                                    .setDescription('How to participate')
-                                    .setRequired(true)
-                            )
-                            .addIntegerOption(option =>
-                                option.setName('duration_hours')
-                                    .setDescription('Contest duration in hours')
-                                    .setRequired(true)
-                                    .setMinValue(1)
-                                    .setMaxValue(168)
-                            )
-                            .addStringOption(option =>
-                                option.setName('prize')
-                                    .setDescription('Contest prize')
-                                    .setRequired(true)
-                            )
-                            .addIntegerOption(option =>
-                                option.setName('max_winners')
-                                    .setDescription('Maximum number of winners')
-                                    .setMinValue(1)
-                                    .setMaxValue(10)
-                            )
+                            .setName('connection')
+                            .setDescription('Test CRCON connection')
                     )
                     .addSubcommand(subcommand =>
                         subcommand
-                            .setName('end')
-                            .setDescription('End the current contest')
-                    )
-                    .addSubcommand(subcommand =>
-                        subcommand
-                            .setName('winners')
-                            .setDescription('Select contest winners')
+                            .setName('player')
+                            .setDescription('Debug player search')
                             .addStringOption(option =>
-                                option.setName('winner_ids')
-                                    .setDescription('Discord user IDs of winners (comma-separated)')
+                                option.setName('t17_username')
+                                    .setDescription('T17 username to search for')
                                     .setRequired(true)
                             )
                     )
-                    .addSubcommand(subcommand =>
-                        subcommand
-                            .setName('status')
-                            .setDescription('Check current contest status')
-                    ),
+            ];
 
-                new SlashCommandBuilder()
-                    .setName('vippanel')
-                    .setDescription('Create a VIP management panel (Admin only)'),
+            const rest = new REST({ version: '10' }).setToken(config.discord.token);
 
-                new SlashCommandBuilder()
-                    .setName('createleaderboard')
-                    .setDescription('Create a live leaderboard (Admin only)')
-                    .addStringOption(option =>
-                        option.setName('type')
-                            .setDescription('Leaderboard type')
-                            .setRequired(true)
-                            .addChoices(
-                                { name: '💀 Most Kills', value: 'kills' },
-                                { name: '🎯 Highest Score', value: 'score' },
-                                { name: '⏱️ Most Playtime', value: 'playtime' },
-                                { name: '📈 Best K/D Ratio', value: 'kdr' }
-                            )
-                    ),
+            Logger.info(`🔄 Registering ${this.commands.length} commands...`);
+            
+            const data = await rest.put(
+                Routes.applicationCommands(config.discord.clientId),
+                { body: this.commands.map(command => command.toJSON()) }
+            );
 
-                new SlashCommandBuilder()
-    .setName('debug')
-    .setDescription('Debug CRCON connection and data (Admin only)')
-    .addSubcommand(subcommand =>
-        subcommand
-            .setName('connection')
-            .setDescription('Test CRCON connection')
-    )
-    .addSubcommand(subcommand =>
-        subcommand
-            .setName('player')
-            .setDescription('Debug player search')
-            .addStringOption(option =>
-                option.setName('t17_username')
-                    .setDescription('T17 username to search for')
-                    .setRequired(true)
-            )
-    ),
+            Logger.info('✅ Successfully registered all commands!');
+
+        } catch (error) {
+            Logger.error('❌ Failed to register commands:', error);
+        }
+    }
+
+    async handleCommand(interaction) {
+        const { commandName } = interaction;
+
+        try {
+            switch (commandName) {
+                case 'link':
+                    await this.handleLinkCommand(interaction);
+                    break;
+                case 'unlink':
+                    await this.handleUnlinkCommand(interaction);
+                    break;
+                case 'vip':
+                    await this.handleVipCommand(interaction);
+                    break;
+                case 'debug':
+                    await this.handleDebugCommand(interaction);
+                    break;
+                default:
+                    await interaction.reply({
+                        content: `❌ Unknown command: ${commandName}`,
+                        ephemeral: true
+                    });
+            }
+        } catch (error) {
+            Logger.error(`Error handling command ${commandName}:`, error);
+            throw error;
+        }
+    }
+
+    async handleLinkCommand(interaction) {
+        const t17Username = interaction.options.getString('t17_username').trim();
+        const discordId = interaction.user.id;
+
+        const existingLink = await this.database.getPlayerByDiscordId(discordId);
+        if (existingLink) {
+            return await interaction.reply({
+                content: `❌ You're already linked to **${existingLink.t17Username}**. Use \`/unlink\` first if you want to change accounts.`,
+                ephemeral: true
+            });
+        }
+
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+            const playerData = await this.crcon.getPlayerByT17Username(t17Username);
+            
+            if (!playerData) {
+                return await interaction.editReply({
+                    content: `❌ T17 username "${t17Username}" not found in Hell Let Loose records.`
+                });
+            }
+
+            const existingPlayer = await this.database.getPlayerBySteamId(playerData.steam_id_64);
+            if (existingPlayer) {
+                return await interaction.editReply({
+                    content: `❌ The T17 account "${playerData.name}" is already linked to another Discord user.`
+                });
+            }
+
+            await this.database.createPlayerLink({
+                discordId,
+                t17Username: playerData.name,
+                displayName: playerData.display_name || playerData.name,
+                steamId: playerData.steam_id_64,
+                platform: this.crcon.detectPlatform(playerData),
+                lastSeen: playerData.last_seen
+            });
+
+            const embed = new EmbedBuilder()
+                .setColor(COLORS.SUCCESS)
+                .setTitle('✅ Account Linked Successfully!')
+                .addFields(
+                    { name: '🎮 T17 Username', value: playerData.name, inline: true },
+                    { name: '🎯 Platform', value: this.crcon.detectPlatform(playerData), inline: true },
+                    { name: '📅 Linked At', value: new Date().toLocaleString(), inline: true }
+                );
+
+            await interaction.editReply({ embeds: [embed] });
+
+        } catch (error) {
+            Logger.error('Error in link command:', error);
+            await interaction.editReply({
+                content: '❌ Failed to link account. The server might be temporarily unavailable.'
+            });
+        }
+    }
+
+    async handleUnlinkCommand(interaction) {
+        const linkedData = await this.database.getPlayerByDiscordId(interaction.user.id);
+
+        if (!linkedData) {
+            return await interaction.reply({
+                content: '❌ You don\'t have any linked Hell Let Loose account.',
+                ephemeral: true
+            });
+        }
+
+        await this.database.deletePlayerLink(interaction.user.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(COLORS.WARNING)
+            .setTitle('🔓 Account Unlinked')
+            .setDescription(`Your Discord account has been unlinked from T17 username **${linkedData.t17Username}**.`);
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
+    async handleVipCommand(interaction) {
+        const targetUser = interaction.options.getUser('user') || interaction.user;
+        const linkedData = await this.database.getPlayerByDiscordId(targetUser.id);
+
+        if (!linkedData) {
+            return await interaction.reply({
+                content: targetUser.id === interaction.user.id 
+                    ? '❌ You haven\'t linked your Hell Let Loose account yet. Use `/link` to get started!'
+                    : '❌ That user hasn\'t linked their Hell Let Loose account yet.',
+                ephemeral: true
+            });
+        }
+
+        await interaction.deferReply();
+
+        try {
+            const vipData = await this.crcon.getVipStatus(linkedData.steamId);
+
+            const embed = new EmbedBuilder()
+                .setTitle(`🎖️ VIP Status - ${linkedData.t17Username}`)
+                .setColor(vipData.isVip ? COLORS.VIP_ACTIVE : COLORS.VIP_EXPIRED)
+                .setThumbnail(targetUser.displayAvatarURL());
+
+            if (vipData.isVip) {
+                const statusIcon = vipData.daysRemaining > 7 ? '🟢' : vipData.daysRemaining > 3 ? '🟡' : '🔴';
+                embed.addFields(
+                    { name: '✅ VIP Status', value: `${statusIcon} Active`, inline: true },
+                    { name: '⏰ Expires', value: vipData.expirationDate || 'Never', inline: true },
+                    { name: '📅 Days Remaining', value: vipData.daysRemaining?.toString() || 'Unlimited', inline: true }
+                );
+            } else {
+                embed.addFields(
+                    { name: '❌ VIP Status', value: '🔴 Not Active', inline: true },
+                    { name: '💡 How to get VIP', value: 'Contact server administrators', inline: true }
+                );
+            }
+
+            await interaction.editReply({ embeds: [embed] });
+
+        } catch (error) {
+            Logger.error('Error in VIP command:', error);
+            await interaction.editReply({
+                content: '❌ Failed to check VIP status. The server might be temporarily unavailable.'
+            });
+        }
+    }
+
+    async handleDebugCommand(interaction) {
+        if (!interaction.member.permissions.has('Administrator')) {
+            return await interaction.reply({
+                content: '❌ You need Administrator permissions to use this command.',
+                ephemeral: true
+            });
+        }
+
+        const subcommand = interaction.options.getSubcommand();
+        
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+            switch (subcommand) {
+                case 'connection':
+                    const connectionTest = await this.crcon.testConnection();
+                    const embed = new EmbedBuilder()
+                        .setTitle('🔧 CRCON Connection Test')
+                        .setColor(connectionTest.connected ? COLORS.SUCCESS : COLORS.ERROR)
+                        .addFields(
+                            { name: 'Status', value: connectionTest.connected ? '✅ Connected' : '❌ Failed', inline: true },
+                            { name: 'Server', value: connectionTest.serverName || 'Unknown', inline: true }
+                        );
+                    
+                    if (!connectionTest.connected) {
+                        embed.addFields({ name: 'Error', value: connectionTest.error, inline: false });
+                    }
+                    
+                    await interaction.editReply({ embeds: [embed] });
+                    break;
+
+                case 'player':
+                    const testUsername = interaction.options.getString('t17_username');
+                    
+                    try {
+                        const playerResult = await this.crcon.getPlayerByT17Username(testUsername);
+                        
+                        const playerEmbed = new EmbedBuilder()
+                            .setTitle(`🔍 Player Search: ${testUsername}`)
+                            .setColor(COLORS.INFO)
+                            .addFields(
+                                { name: 'Search Result', value: playerResult ? '✅ FOUND' : '❌ NOT FOUND', inline: true }
+                            );
+                            
+                        if (playerResult) {
+                            playerEmbed.addFields(
+                                { name: 'Name', value: playerResult.name || 'N/A', inline: true },
+                                { name: 'Steam ID', value: playerResult.steam_id_64 || 'N/A', inline: true }
+                            );
+                        }
+                        
+                        await interaction.editReply({ embeds: [playerEmbed] });
+                    } catch (error) {
+                        await interaction.editReply({
+                            content: `❌ Debug failed: ${error.message}`
+                        });
+                    }
+                    break;
+
+                default:
+                    await interaction.editReply({
+                        content: `❌ Unknown debug subcommand: ${subcommand}`
+                    });
+            }
+
+        } catch (error) {
+            Logger.error('Error in debug command:', error);
+            await interaction.editReply({
+                content: `❌ Debug command failed: ${error.message}`
+            });
+        }
+    }
+}
+
+module.exports = CommandHandler;
