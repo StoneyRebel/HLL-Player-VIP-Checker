@@ -183,6 +183,7 @@ class CommandHandler {
                     ),
 
                 new SlashCommandBuilder()
+                    .setName('debug')
                     .setDescription('Debug CRCON connection and data (Admin only)')
                     .addSubcommand(subcommand =>
                         subcommand
@@ -926,56 +927,6 @@ class CommandHandler {
                     }
                     
                     await interaction.editReply({ embeds: [playerEmbed] });
-                    break;
-
-                case 'comprehensive':
-                    const comprehensiveUsername = interaction.options.getString('t17_username');
-                    const comprehensiveResults = await this.crcon.debugPlayerSearch(comprehensiveUsername);
-                    
-                    const comprehensiveEmbed = new EmbedBuilder()
-                        .setTitle(`🔍 Comprehensive Search: ${comprehensiveUsername}`)
-                        .setColor(COLORS.INFO);
-                        
-                    if (comprehensiveResults.endpointResults) {
-                        for (const [endpoint, result] of Object.entries(comprehensiveResults.endpointResults)) {
-                            const status = result.success ? '✅' : '❌';
-                            const info = result.success ? 
-                                `Count: ${result.count} | Found: ${result.foundPlayer ? 'YES' : 'NO'}` : 
-                                `Error: ${result.error}`;
-                            comprehensiveEmbed.addFields({ 
-                                name: `${status} ${endpoint}`, 
-                                value: info, 
-                                inline: true 
-                            });
-                        }
-                    }
-                    
-                    await interaction.editReply({ embeds: [comprehensiveEmbed] });
-                    break;
-
-                case 'comprehensive':
-                    const comprehensiveUsername = interaction.options.getString('t17_username');
-                    const comprehensiveResults = await this.crcon.debugPlayerSearch(comprehensiveUsername);
-                    
-                    const comprehensiveEmbed = new EmbedBuilder()
-                        .setTitle(`🔍 Comprehensive Search: ${comprehensiveUsername}`)
-                        .setColor(COLORS.INFO);
-                        
-                    if (comprehensiveResults.endpointResults) {
-                        for (const [endpoint, result] of Object.entries(comprehensiveResults.endpointResults)) {
-                            const status = result.success ? '✅' : '❌';
-                            const info = result.success ? 
-                                `Count: ${result.count} | Found: ${result.foundPlayer ? 'YES' : 'NO'}` : 
-                                `Error: ${result.error}`;
-                            comprehensiveEmbed.addFields({ 
-                                name: `${status} ${endpoint}`, 
-                                value: info, 
-                                inline: true 
-                            });
-                        }
-                    }
-                    
-                    await interaction.editReply({ embeds: [comprehensiveEmbed] });
                     break;
             }
 
